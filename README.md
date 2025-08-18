@@ -360,3 +360,5 @@ interface RawNode {
 
 **底部工具栏可用命令:**
 `'zoomOut'`, `'zoomIn'`, `'zoomDisplay'`, `'separator'`, `'toggleReadOnly'`, `'fitView'`, `'centerView'`, `'layout'`, `'fullscreen'`, `'search'`, `'closeBottom'`
+
+bbb
