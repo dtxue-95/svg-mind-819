@@ -19,6 +19,7 @@
 - **布局与结构**:
     - **自动布局**: 一键整理所有节点，使其排列整齐。
     - **折叠/展开**: 支持单个节点或所有节点的折叠与展开。
+    - **按层级折叠/展开**: 支持按节点类型（如模块、测试点、用例）批量折叠或展开节点。
 - **状态管理**:
     - **历史记录**: 无限次撤销和重做。
     - **“未保存”状态 (`isDirty`)**: 自动追踪是否有未保存的更改，用于控制“保存”按钮的可用性。
@@ -198,6 +199,7 @@ root.render(<ComprehensiveExample />);
 | `reorderableNodeTypes`     | `NodeType[]`                               | 定义了哪些节点类型可以被拖拽挂载和排序。                                                                                                                         | `['MODULE', 'TEST_POINT', 'USE_CASE', 'STEP']`           |
 | `enableUseCaseExecution`   | `boolean`                                  | 是否启用“执行用例”功能。                                                                                                                                         | `true`                                                   |
 | `enableReadOnlyUseCaseExecution` | `boolean`                            | 在只读模式下，是否允许通过右键菜单执行用例。                                                                                                                     | `true`                                                   |
+| `enableExpandCollapseByLevel` | `boolean`                               | 是否在画布右键菜单中启用“按节点类型展开/收起”的功能。                                                                                                            | `true`                                                   |
 | `strictMode`               | `boolean`                                  | 是否启用严格模式，强制执行节点层级规则。                                                                                                                         | `true`                                                   |
 | `showAITag`                | `boolean`                                  | 是否显示 `generateModeName: 'AI'` 节点的 AI 标识。                                                                                                                   | `true`                                                   |
 | `showNodeType`             | `boolean`                                  | 是否在节点上显示其类型标签。                                                                                                                                     | `true`                                                   |
@@ -360,5 +362,3 @@ interface RawNode {
 
 **底部工具栏可用命令:**
 `'zoomOut'`, `'zoomIn'`, `'zoomDisplay'`, `'separator'`, `'toggleReadOnly'`, `'fitView'`, `'centerView'`, `'layout'`, `'fullscreen'`, `'search'`, `'closeBottom'`
-
-bbbccc
