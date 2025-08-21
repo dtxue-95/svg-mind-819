@@ -38,7 +38,7 @@ export const mindMapReducer = (state: MindMapData, action: MindMapAction): MindM
         case 'UPDATE_NODE_TYPE': {
             const { nodeUuid, nodeType } = action.payload;
             const node = state.nodes[nodeUuid];
-            if (!node) return state;
+            if (!node || node.nodeType === nodeType) return state;
 
             return {
                 ...state,
@@ -56,7 +56,7 @@ export const mindMapReducer = (state: MindMapData, action: MindMapAction): MindM
         case 'UPDATE_NODE_PRIORITY': {
             const { nodeUuid, priorityLevel } = action.payload;
             const node = state.nodes[nodeUuid];
-            if (!node) return state;
+            if (!node || node.priorityLevel === priorityLevel) return state;
 
             return {
                 ...state,

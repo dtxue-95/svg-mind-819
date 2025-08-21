@@ -3,7 +3,7 @@ import { useAutoLayout } from './useAutoLayout';
 import { useNodeActions } from './useNodeActions';
 import { autoLayout } from '../utils/autoLayout';
 import { mindMapReducer, MindMapAction } from '../state/mindMapReducer';
-import { createHistoryReducer } from './useMindMapState';
+import { createHistoryReducer, HistoryAction } from './useMindMapState';
 import type { MindMapData, NodeType, NodePriority, DataChangeCallback } from '../types';
 import { OperationType } from '../types';
 import { getNodeChainByUuid } from '../utils/dataChangeUtils';
@@ -143,7 +143,7 @@ export const useMindMap = (
                 };
                 onDataChangeRef.current(convertDataChangeInfo(info));
             }
-            dispatch({ type: 'SET_MIND_MAP', payload: laidOutMap });
+            dispatch({ type: 'UPDATE_PRESENT_STATE', payload: laidOutMap });
         } else {
             // This is a "temporary" size update (e.g., initial measure, live textarea resize).
             // Just update the node size in the state without re-laying out the whole tree.
@@ -350,12 +350,13 @@ export const useMindMap = (
     }, [mindMap, dispatch, onDataChange]);
 
     const updateNodeType = useCallback((nodeUuid: string, nodeType: NodeType) => {
+        const currentMindMap = mindMapRef.current;
         const action: MindMapAction = { type: 'UPDATE_NODE_TYPE', payload: { nodeUuid, nodeType } };
-        const nextState = mindMapReducer(mindMap, action);
-        if (nextState === mindMap) return;
+        const nextState = mindMapReducer(currentMindMap, action);
+        if (nextState === currentMindMap) return;
 
-        if (onDataChange) {
-            const nodeBefore = mindMap.nodes[nodeUuid];
+        if (onDataChangeRef.current) {
+            const nodeBefore = currentMindMap.nodes[nodeUuid];
             const nodeAfter = nextState.nodes[nodeUuid];
             const parentNode = nextState.nodes[nodeAfter.parentUuid!];
             const chain = getNodeChainByUuid(nextState, nodeUuid);
@@ -363,7 +364,7 @@ export const useMindMap = (
                 operationType: OperationType.UPDATE_NODE_TYPE,
                 timestamp: Date.now(),
                 description: `Changed node '${nodeBefore.name}' type to ${nodeType}`,
-                previousData: mindMap,
+                previousData: currentMindMap,
                 currentData: nextState,
                 affectedNodeUuids: [nodeUuid],
                 updatedNodes: [nodeAfter],
@@ -374,18 +375,19 @@ export const useMindMap = (
                 parentUuidChain: chain.uuids.slice(0, -1),
                 parentUuidChainNodes: chain.nodes.slice(0, -1),
             };
-            onDataChange(convertDataChangeInfo(info));
+            onDataChangeRef.current(convertDataChangeInfo(info));
         }
         dispatch(action);
-    }, [mindMap, dispatch, onDataChange]);
+    }, [dispatch]);
 
     const updateNodePriority = useCallback((nodeUuid: string, priorityLevel: NodePriority) => {
+        const currentMindMap = mindMapRef.current;
         const action: MindMapAction = { type: 'UPDATE_NODE_PRIORITY', payload: { nodeUuid, priorityLevel } };
-        const nextState = mindMapReducer(mindMap, action);
-        if (nextState === mindMap) return;
+        const nextState = mindMapReducer(currentMindMap, action);
+        if (nextState === currentMindMap) return;
 
-        if (onDataChange) {
-            const nodeBefore = mindMap.nodes[nodeUuid];
+        if (onDataChangeRef.current) {
+            const nodeBefore = currentMindMap.nodes[nodeUuid];
             const nodeAfter = nextState.nodes[nodeUuid];
             const parentNode = nextState.nodes[nodeAfter.parentUuid!];
             const chain = getNodeChainByUuid(nextState, nodeUuid);
@@ -393,7 +395,7 @@ export const useMindMap = (
                 operationType: OperationType.UPDATE_NODE_PRIORITY,
                 timestamp: Date.now(),
                 description: `Updated priorityLevel for node '${nodeAfter.name}' to ${priorityLevel}`,
-                previousData: mindMap,
+                previousData: currentMindMap,
                 currentData: nextState,
                 affectedNodeUuids: [nodeUuid],
                 updatedNodes: [nodeAfter],
@@ -404,10 +406,10 @@ export const useMindMap = (
                 parentUuidChain: chain.uuids.slice(0, -1),
                 parentUuidChainNodes: chain.nodes.slice(0, -1),
             };
-            onDataChange(convertDataChangeInfo(info));
+            onDataChangeRef.current(convertDataChangeInfo(info));
         }
         dispatch(action);
-    }, [mindMap, dispatch, onDataChange]);
+    }, [dispatch]);
     
     const reorderNode = useCallback((draggedNodeUuid: string, targetSiblingUuid: string, position: 'before' | 'after') => {
         const action: MindMapAction = { type: 'REORDER_NODE', payload: { draggedNodeUuid, targetSiblingUuid, position } };

@@ -7,12 +7,13 @@ export interface HistoryState {
     future: MindMapData[];
 }
 
-type HistoryAction = 
+export type HistoryAction = 
     | { type: 'UNDO' }
     | { type: 'REDO' }
     | { type: 'RESET_HISTORY'; payload: MindMapData }
     | { type: 'CLEAR_HISTORY' }
     | { type: 'COMMIT_EDIT'; payload: { stateToArchive: MindMapData; newPresentState: MindMapData } }
+    | { type: 'UPDATE_PRESENT_STATE'; payload: MindMapData }
     | MindMapAction;
 
 export const createHistoryReducer = (
@@ -60,6 +61,14 @@ export const createHistoryReducer = (
                     past: [...past, action.payload.stateToArchive],
                     present: action.payload.newPresentState,
                     future: [],
+                };
+            case 'UPDATE_PRESENT_STATE':
+                if (state.present === action.payload) {
+                    return state;
+                }
+                return {
+                    ...state,
+                    present: action.payload,
                 };
             default: {
                 const newPresent = reducer(present, action as MindMapAction);
