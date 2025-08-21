@@ -13,7 +13,13 @@ export type MindMapAction =
     | { type: 'TOGGLE_NODE_COLLAPSE', payload: { nodeUuid: string } }
     | { type: 'EXPAND_NODES', payload: { nodeUuids: string[] } }
     | { type: 'EXPAND_ALL_NODES' }
-    | { type: 'COLLAPSE_ALL_NODES' };
+    | { type: 'COLLAPSE_ALL_NODES' }
+    | { type: 'EXPAND_TO_LEVEL', payload: { targetTypes: NodeType[] } }
+    | { type: 'COLLAPSE_TO_LEVEL', payload: { targetTypes: NodeType[] } };
+
+// Defines the logical hierarchy of node types for level-based operations.
+const typeHierarchy: NodeType[] = ['DEMAND', 'MODULE', 'TEST_POINT', 'USE_CASE', 'PRECONDITION', 'STEP', 'EXPECTED_RESULT'];
+
 
 export const mindMapReducer = (state: MindMapData, action: MindMapAction): MindMapData => {
     switch (action.type) {
@@ -237,6 +243,64 @@ export const mindMapReducer = (state: MindMapData, action: MindMapAction): MindM
             Object.keys(newNodes).forEach(uuid => {
                 if (uuid !== state.rootUuid && !newNodes[uuid].isCollapsed) {
                     newNodes[uuid] = { ...newNodes[uuid], isCollapsed: true };
+                    changed = true;
+                }
+            });
+            if (!changed) return state;
+            return { ...state, nodes: newNodes };
+        }
+
+        case 'EXPAND_TO_LEVEL': {
+            const { targetTypes } = action.payload;
+            const targetIndices = targetTypes.map(t => typeHierarchy.indexOf(t));
+            if (targetIndices.some(i => i === -1)) return state; // Invalid type
+            const maxTargetIndex = Math.max(...targetIndices);
+            
+            const newNodes = { ...state.nodes };
+            let changed = false;
+            Object.keys(newNodes).forEach(uuid => {
+                const node = newNodes[uuid];
+                const nodeTypeIndex = typeHierarchy.indexOf(node.nodeType!);
+                if (nodeTypeIndex === -1) return;
+                
+                // Expand up to and including target level, collapse after
+                const shouldBeCollapsed = nodeTypeIndex > maxTargetIndex;
+                if (node.isCollapsed !== shouldBeCollapsed) {
+                    newNodes[uuid] = { ...node, isCollapsed: shouldBeCollapsed };
+                    changed = true;
+                }
+            });
+            if (!changed) return state;
+            return { ...state, nodes: newNodes };
+        }
+        
+        case 'COLLAPSE_TO_LEVEL': {
+            const { targetTypes } = action.payload;
+            const targetIndices = targetTypes.map(t => typeHierarchy.indexOf(t));
+            if (targetIndices.some(i => i === -1)) return state; // Invalid type
+            const minTargetIndex = Math.min(...targetIndices);
+
+            const newNodes = { ...state.nodes };
+            let changed = false;
+            Object.keys(newNodes).forEach(uuid => {
+                const node = newNodes[uuid];
+                
+                if (uuid === state.rootUuid) { // Root node should never be collapsed
+                    if (node.isCollapsed) {
+                        newNodes[uuid] = { ...node, isCollapsed: false };
+                        changed = true;
+                    }
+                    return; // Continue to next node
+                }
+
+                const nodeTypeIndex = typeHierarchy.indexOf(node.nodeType!);
+                if (nodeTypeIndex === -1) return;
+
+                // Expand before target level, collapse at and after
+                const shouldBeCollapsed = nodeTypeIndex >= minTargetIndex;
+                
+                if (node.isCollapsed !== shouldBeCollapsed) {
+                    newNodes[uuid] = { ...node, isCollapsed: shouldBeCollapsed };
                     changed = true;
                 }
             });

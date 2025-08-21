@@ -349,6 +349,58 @@ export const useMindMap = (
         dispatch({ type: 'SET_MIND_MAP', payload: laidOutMap });
     }, [mindMap, dispatch, onDataChange]);
 
+    const expandToLevel = useCallback((targetTypes: NodeType[]) => {
+        const nextState = mindMapReducer(mindMap, { type: 'EXPAND_TO_LEVEL', payload: { targetTypes } });
+        if (nextState === mindMap) return;
+        const laidOutMap = autoLayout(nextState);
+
+        if (onDataChangeRef.current) {
+            const changedNodes = Object.values(laidOutMap.nodes).filter(
+                (node) => {
+                    const oldNode = mindMap.nodes[node.uuid!];
+                    return oldNode && oldNode.isCollapsed !== node.isCollapsed;
+                }
+            );
+            const info = {
+                operationType: OperationType.TOGGLE_NODE_COLLAPSE,
+                timestamp: Date.now(),
+                description: `Expanded to level: ${targetTypes.join(', ')}`,
+                previousData: mindMap,
+                currentData: laidOutMap,
+                affectedNodeUuids: changedNodes.map(n => n.uuid!),
+                updatedNodes: changedNodes,
+            };
+            onDataChangeRef.current(convertDataChangeInfo(info));
+        }
+        dispatch({ type: 'SET_MIND_MAP', payload: laidOutMap });
+    }, [mindMap, dispatch]);
+
+    const collapseToLevel = useCallback((targetTypes: NodeType[]) => {
+        const nextState = mindMapReducer(mindMap, { type: 'COLLAPSE_TO_LEVEL', payload: { targetTypes } });
+        if (nextState === mindMap) return;
+        const laidOutMap = autoLayout(nextState);
+
+        if (onDataChangeRef.current) {
+            const changedNodes = Object.values(laidOutMap.nodes).filter(
+                (node) => {
+                    const oldNode = mindMap.nodes[node.uuid!];
+                    return oldNode && oldNode.isCollapsed !== node.isCollapsed;
+                }
+            );
+            const info = {
+                operationType: OperationType.TOGGLE_NODE_COLLAPSE,
+                timestamp: Date.now(),
+                description: `Collapsed to level: ${targetTypes.join(', ')}`,
+                previousData: mindMap,
+                currentData: laidOutMap,
+                affectedNodeUuids: changedNodes.map(n => n.uuid!),
+                updatedNodes: changedNodes,
+            };
+            onDataChangeRef.current(convertDataChangeInfo(info));
+        }
+        dispatch({ type: 'SET_MIND_MAP', payload: laidOutMap });
+    }, [mindMap, dispatch]);
+
     const updateNodeType = useCallback((nodeUuid: string, nodeType: NodeType) => {
         const currentMindMap = mindMapRef.current;
         const action: MindMapAction = { type: 'UPDATE_NODE_TYPE', payload: { nodeUuid, nodeType } };
@@ -480,6 +532,8 @@ export const useMindMap = (
         expandNodes,
         expandAllNodes,
         collapseAllNodes,
+        expandToLevel,
+        collapseToLevel,
         updateNodeType,
         updateNodePriority,
         undo,

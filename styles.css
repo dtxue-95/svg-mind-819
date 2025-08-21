@@ -715,6 +715,7 @@ foreignObject[data-dragging='true'] {
   font-size: 14px;
   color: #333;
   transition: background-color 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
 }
 
 .context-menu__item button:hover:not(:disabled) {

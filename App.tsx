@@ -53,6 +53,7 @@ interface AppProps {
     showMinimap?: boolean;
     getNodeBackgroundColor?: (node: MindMapNodeData) => string | null | undefined;
     enableReadOnlyUseCaseExecution?: boolean;
+    enableExpandCollapseByLevel?: boolean;
     children?: React.ReactNode;
 }
 
@@ -82,6 +83,7 @@ const App = forwardRef<AppRef, AppProps>(({
     showMinimap = false,
     getNodeBackgroundColor,
     enableReadOnlyUseCaseExecution = true,
+    enableExpandCollapseByLevel = true,
     children,
 }, ref) => {
     // State to hold the data for the mind map. Initialized from props.
@@ -116,6 +118,8 @@ const App = forwardRef<AppRef, AppProps>(({
         expandNodes,
         expandAllNodes,
         collapseAllNodes,
+        expandToLevel,
+        collapseToLevel,
         updateNodeType,
         updateNodePriority,
         undo,
@@ -240,6 +244,9 @@ const App = forwardRef<AppRef, AppProps>(({
                 showCanvasContextMenu={showCanvasContextMenu}
                 onExpandAllNodes={expandAllNodes}
                 onCollapseAllNodes={collapseAllNodes}
+                onExpandToLevel={expandToLevel}
+                onCollapseToLevel={collapseToLevel}
+                enableExpandCollapseByLevel={enableExpandCollapseByLevel}
                 onUpdateNodeType={updateNodeType}
                 onUpdateNodePriority={updateNodePriority}
                 priorityEditableNodeTypes={priorityEditableNodeTypes}

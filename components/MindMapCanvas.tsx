@@ -36,6 +36,8 @@ interface MindMapCanvasProps {
     onExpandNodes: (nodeUuids: string[]) => void;
     onExpandAllNodes: () => void;
     onCollapseAllNodes: () => void;
+    onExpandToLevel: (nodeTypes: NodeType[]) => void;
+    onCollapseToLevel: (nodeTypes: NodeType[]) => void;
     onUpdateNodeType: (nodeUuid: string, nodeType: NodeType) => void;
     onUpdateNodePriority: (nodeUuid: string, priorityLevel: NodePriority) => void;
     onSave: () => void;
@@ -66,6 +68,7 @@ interface MindMapCanvasProps {
     showMinimap?: boolean;
     getNodeBackgroundColor?: (node: MindMapNodeData) => string | null | undefined;
     enableReadOnlyUseCaseExecution?: boolean;
+    enableExpandCollapseByLevel: boolean;
     isReadOnly: boolean;
     onToggleReadOnly: () => void;
     isDirty: boolean;
@@ -84,8 +87,8 @@ const SvgPath = React.memo(({ d, className }: { d: string, className: string }) 
 
 
 export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
-    mindMapData, onAddChildNode, onAddSiblingNode, onDeleteNode, onFinishEditing, onUpdateNodePosition, onReparentNode, onReorderNode, onLayout, onUpdateNodeSize, onSave, showAITag, isDraggable = false, enableStrictDrag = false, enableNodeReorder = true, reorderableNodeTypes, showNodeType, showPriority, onToggleCollapse, onExpandNodes, onExpandAllNodes, onCollapseAllNodes, onUpdateNodeType, onUpdateNodePriority,
-    onUndo, onRedo, canUndo, canRedo, showTopToolbar, showBottomToolbar, topToolbarCommands, bottomToolbarCommands, strictMode = false, showContextMenu = true, showCanvasContextMenu = true, priorityEditableNodeTypes, onDataChange, onExecuteUseCase, enableUseCaseExecution, canvasBackgroundColor, showBackgroundDots, showMinimap, getNodeBackgroundColor, enableReadOnlyUseCaseExecution, isReadOnly, onToggleReadOnly, isDirty, children
+    mindMapData, onAddChildNode, onAddSiblingNode, onDeleteNode, onFinishEditing, onUpdateNodePosition, onReparentNode, onReorderNode, onLayout, onUpdateNodeSize, onSave, showAITag, isDraggable = false, enableStrictDrag = false, enableNodeReorder = true, reorderableNodeTypes, showNodeType, showPriority, onToggleCollapse, onExpandNodes, onExpandAllNodes, onCollapseAllNodes, onExpandToLevel, onCollapseToLevel, onUpdateNodeType, onUpdateNodePriority,
+    onUndo, onRedo, canUndo, canRedo, showTopToolbar, showBottomToolbar, topToolbarCommands, bottomToolbarCommands, strictMode = false, showContextMenu = true, showCanvasContextMenu = true, priorityEditableNodeTypes, onDataChange, onExecuteUseCase, enableUseCaseExecution, canvasBackgroundColor, showBackgroundDots, showMinimap, getNodeBackgroundColor, enableReadOnlyUseCaseExecution, enableExpandCollapseByLevel, isReadOnly, onToggleReadOnly, isDirty, children
 }) => {
     const [canvasState, dispatch] = useReducer(canvasReducer, {
         rootUuid: mindMapData.rootUuid,
@@ -881,6 +884,9 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
                     onClose={handleCloseCanvasContextMenu}
                     onExpandAllNodes={onExpandAllNodes}
                     onCollapseAllNodes={onCollapseAllNodes}
+                    onExpandToLevel={onExpandToLevel}
+                    onCollapseToLevel={onCollapseToLevel}
+                    enableExpandCollapseByLevel={enableExpandCollapseByLevel}
                     onFitView={handleFitView}
                     onCenterView={handleCenterView}
                     isExpandAllDisabled={isExpandAllDisabled}
