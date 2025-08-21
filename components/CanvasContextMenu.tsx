@@ -35,10 +35,12 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
         onClose();
     };
     const handleExpandToTestPoint = () => { onExpandToLevel(['TEST_POINT']); onClose(); };
+    const handleCollapseToModule = () => { onCollapseToLevel(['MODULE']); onClose(); };
     const handleCollapseToTestPoint = () => { onCollapseToLevel(['TEST_POINT']); onClose(); };
     const handleExpandToUseCase = () => { onExpandToLevel(['USE_CASE']); onClose(); };
     const handleCollapseToUseCase = () => { onCollapseToLevel(['USE_CASE']); onClose(); };
-    const handleExpandToStepResult = () => { onExpandAllNodes(); onClose(); }; // Expanding to the last level is same as expand all
+    const handleExpandToStep = () => { onExpandToLevel(['STEP']); onClose(); };
+    const handleExpandToResult = () => { onExpandAllNodes(); onClose(); };
     const handleCollapseToStepResult = () => { onCollapseToLevel(['STEP']); onClose(); };
 
 
@@ -48,13 +50,16 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
         <div className="context-menu context-menu--submenu">
             <ul>
                 <ContextMenuItem onClick={handleExpandToTestPoint}>
-                    按测试点展开
+                    展开到测试点
                 </ContextMenuItem>
                 <ContextMenuItem onClick={handleExpandToUseCase}>
-                    按用例展开
+                    展开到用例
                 </ContextMenuItem>
-                <ContextMenuItem onClick={handleExpandToStepResult}>
-                    按步骤/结果展开
+                <ContextMenuItem onClick={handleExpandToStep}>
+                    展开到步骤
+                </ContextMenuItem>
+                <ContextMenuItem onClick={handleExpandToResult}>
+                    展开到结果
                 </ContextMenuItem>
             </ul>
         </div>
@@ -63,6 +68,9 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
     const collapseSubmenu = (
         <div className="context-menu context-menu--submenu">
             <ul>
+                <ContextMenuItem onClick={handleCollapseToModule}>
+                    按模块收起
+                </ContextMenuItem>
                 <ContextMenuItem onClick={handleCollapseToTestPoint}>
                     按测试点收起
                 </ContextMenuItem>

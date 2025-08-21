@@ -263,8 +263,8 @@ export const mindMapReducer = (state: MindMapData, action: MindMapAction): MindM
                 const nodeTypeIndex = typeHierarchy.indexOf(node.nodeType!);
                 if (nodeTypeIndex === -1) return;
                 
-                // Expand up to and including target level, collapse after
-                const shouldBeCollapsed = nodeTypeIndex > maxTargetIndex;
+                // Expand up to target level, collapse AT and after target level
+                const shouldBeCollapsed = nodeTypeIndex >= maxTargetIndex;
                 if (node.isCollapsed !== shouldBeCollapsed) {
                     newNodes[uuid] = { ...node, isCollapsed: shouldBeCollapsed };
                     changed = true;
