@@ -1,8 +1,4 @@
 
-
-
-
-
 import React, { useCallback, useRef, useEffect, useReducer, useMemo, useState } from 'react';
 import type { MindMapData, CommandId, MindMapNodeData, NodeType, NodePriority, DataChangeCallback, CanvasTransform } from '../types';
 import { MindMapNode } from './MindMapNode';
@@ -137,6 +133,7 @@ const SvgPath = React.memo(({ d, className }: { d: string, className: string }) 
 });
 
 const PAN_AMOUNT = 50;
+const AUTO_PAN_SPEED = 10;
 
 export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
     mindMapData, onAddChildNode, onAddSiblingNode, onDeleteNode, onFinishEditing, onUpdateNodePosition, onReparentNode, onReorderNode, onLayout, onUpdateNodeSize, onSave, showAITag, isDraggable = false, enableStrictDrag = false, enableNodeReorder = true, reorderableNodeTypes, showNodeType, showPriority, onToggleCollapse, onExpandNodes, onExpandAllNodes, onCollapseAllNodes, onExpandToLevel, onCollapseToLevel, onUpdateNodeType, onUpdateNodePriority,
@@ -167,6 +164,10 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
     const animationFrameId = useRef<number | null>(null);
     const lastMouseEvent = useRef<MouseEvent | null>(null);
     const isDraggingRef = useRef(false);
+
+    // Refs for edge auto-panning
+    const autoPanRequestRef = useRef<number | null>(null);
+    const autoPanDirectionRef = useRef({ x: 0, y: 0 });
 
     const visibleNodeUuids = useMemo(() => {
         const visible = new Set<string>();
@@ -728,6 +729,25 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
 
         startPanning(e);
     };
+    
+    const autoPanLoop = useCallback(() => {
+        if (!isDraggingRef.current || (autoPanDirectionRef.current.x === 0 && autoPanDirectionRef.current.y === 0)) {
+            autoPanRequestRef.current = null;
+            return;
+        }
+    
+        const panDx = -autoPanDirectionRef.current.x * AUTO_PAN_SPEED;
+        const panDy = -autoPanDirectionRef.current.y * AUTO_PAN_SPEED;
+    
+        dragStartPosRef.current.x += panDx;
+        dragStartPosRef.current.y += panDy;
+    
+        dispatch({ type: 'PAN', payload: { dx: panDx, dy: panDy } });
+    
+        updateDrag();
+    
+        autoPanRequestRef.current = requestAnimationFrame(autoPanLoop);
+    }, [dispatch, updateDrag]);
 
     
     const handleNodeDragStart = useCallback((nodeUuid: string, e: React.MouseEvent) => {
@@ -756,6 +776,31 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
                 }});
             }
     
+            if (dragHasStarted && canvasRef.current) {
+                const canvasRect = canvasRef.current.getBoundingClientRect();
+                const newPanDirection = { x: 0, y: 0 };
+    
+                const threshold = 100;
+
+                if (moveEvent.clientX < canvasRect.left + threshold) {
+                    newPanDirection.x = -1; // Mouse on left, pan canvas right
+                } else if (moveEvent.clientX > canvasRect.right - threshold) {
+                    newPanDirection.x = 1; // Mouse on right, pan canvas left
+                }
+    
+                if (moveEvent.clientY < canvasRect.top + threshold) {
+                    newPanDirection.y = -1; // Mouse on top, pan canvas down
+                } else if (moveEvent.clientY > canvasRect.bottom - threshold) {
+                    newPanDirection.y = 1; // Mouse on bottom, pan canvas up
+                }
+    
+                autoPanDirectionRef.current = newPanDirection;
+    
+                if ((newPanDirection.x !== 0 || newPanDirection.y !== 0) && !autoPanRequestRef.current) {
+                    autoPanRequestRef.current = requestAnimationFrame(autoPanLoop);
+                }
+            }
+
             if (isDraggingRef.current && !animationFrameId.current) {
                 animationFrameId.current = requestAnimationFrame(updateDrag);
             }
@@ -772,6 +817,12 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
             }
             isDraggingRef.current = false;
     
+            if (autoPanRequestRef.current) {
+                cancelAnimationFrame(autoPanRequestRef.current);
+                autoPanRequestRef.current = null;
+            }
+            autoPanDirectionRef.current = { x: 0, y: 0 };
+
             if (dragHasStarted) {
                 const { dragState, transform } = canvasStateRef.current;
     
@@ -802,7 +853,7 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
         window.addEventListener('mousemove', handleMouseMove);
         window.addEventListener('mouseup', handleMouseUp);
     
-    }, [isReadOnly, isDraggable, enableStrictDrag, enableNodeReorder, reorderableNodeTypes, mindMapData, onUpdateNodePosition, onReparentNode, onReorderNode, updateDrag, dispatch]);
+    }, [isReadOnly, isDraggable, enableStrictDrag, enableNodeReorder, reorderableNodeTypes, mindMapData, onUpdateNodePosition, onReparentNode, onReorderNode, updateDrag, dispatch, autoPanLoop]);
 
     const handleSelectNode = useCallback((nodeUuid: string | null) => {
         if (!isSearchActive) {
