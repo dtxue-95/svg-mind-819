@@ -1,4 +1,5 @@
 
+
 import React, { useCallback, useRef, useEffect, useReducer, useMemo, useState } from 'react';
 import type { MindMapData, CommandId, MindMapNodeData, NodeType, NodePriority, DataChangeCallback, CanvasTransform } from '../types';
 import { MindMapNode } from './MindMapNode';
@@ -442,6 +443,17 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
                 return;
             }
 
+            // Expand/collapse should work in read-only mode
+            if ((e.key === ' ' || e.code === 'Space') && selectedNodeUuid) {
+                e.preventDefault();
+                const node = mindMapData.nodes[selectedNodeUuid];
+                // Only toggle if the node has children. The callback itself handles checks for root node etc.
+                if (node && node.childNodeList && node.childNodeList.length > 0) {
+                    onToggleCollapse(selectedNodeUuid);
+                }
+                return;
+            }
+
             if (isReadOnly) {
                 return;
             }
@@ -511,6 +523,8 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
         onSave,
         handleFitView,
         handleCenterView,
+        onToggleCollapse,
+        mindMapData.nodes,
     ]);
 
      const handleCloseContextMenu = useCallback(() => {
