@@ -1,5 +1,8 @@
 
 
+
+
+
 import React, { useCallback, useRef, useEffect, useReducer, useMemo, useState } from 'react';
 import type { MindMapData, CommandId, MindMapNodeData, NodeType, NodePriority, DataChangeCallback, CanvasTransform } from '../types';
 import { MindMapNode } from './MindMapNode';
@@ -133,6 +136,7 @@ const SvgPath = React.memo(({ d, className }: { d: string, className: string }) 
     );
 });
 
+const PAN_AMOUNT = 50;
 
 export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
     mindMapData, onAddChildNode, onAddSiblingNode, onDeleteNode, onFinishEditing, onUpdateNodePosition, onReparentNode, onReorderNode, onLayout, onUpdateNodeSize, onSave, showAITag, isDraggable = false, enableStrictDrag = false, enableNodeReorder = true, reorderableNodeTypes, showNodeType, showPriority, onToggleCollapse, onExpandNodes, onExpandAllNodes, onCollapseAllNodes, onExpandToLevel, onCollapseToLevel, onUpdateNodeType, onUpdateNodePriority,
@@ -371,6 +375,33 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
         dispatch({ type: 'SET_TRANSFORM', payload: newTransform });
     }, [dispatch, canvasRef, mindMapData, selectedNodeUuid, transform.scale]);
 
+    const updateDrag = useCallback(() => {
+        animationFrameId.current = null;
+        if (!isDraggingRef.current || !lastMouseEvent.current) {
+            return;
+        }
+    
+        const moveEvent = lastMouseEvent.current;
+        const { dragState: currentDragState, transform: currentTransform } = canvasStateRef.current;
+        if (!currentDragState || !canvasRef.current) return;
+    
+        const dx = (moveEvent.clientX - dragStartPosRef.current.x) / currentTransform.scale;
+        const dy = (moveEvent.clientY - dragStartPosRef.current.y) / currentTransform.scale;
+    
+        const canvasRect = canvasRef.current.getBoundingClientRect();
+        const canvasX = moveEvent.clientX - canvasRect.left;
+        const canvasY = moveEvent.clientY - canvasRect.top;
+    
+        dispatch({
+            type: 'DRAG_MOVE',
+            payload: {
+                offset: { dx, dy },
+                canvasPosition: { x: canvasX, y: canvasY },
+                allNodes: mindMapData.nodes,
+                visibleNodeUuids,
+            },
+        });
+    }, [dispatch, mindMapData.nodes, visibleNodeUuids]);
 
     // Effect for keyboard shortcuts
     useEffect(() => {
@@ -454,6 +485,52 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
                 return;
             }
 
+            // Canvas panning with arrow keys
+            let panDx = 0;
+            let panDy = 0;
+            let panHandled = false;
+            switch (e.key) {
+                case 'ArrowUp':
+                    panDy = PAN_AMOUNT;
+                    panHandled = true;
+                    break;
+                case 'ArrowDown':
+                    panDy = -PAN_AMOUNT;
+                    panHandled = true;
+                    break;
+                case 'ArrowLeft':
+                    panDx = PAN_AMOUNT;
+                    panHandled = true;
+                    break;
+                case 'ArrowRight':
+                    panDx = -PAN_AMOUNT;
+                    panHandled = true;
+                    break;
+            }
+
+            if (panHandled) {
+                e.preventDefault();
+
+                if (isDraggingRef.current) {
+                    // When panning via keyboard while dragging, we adjust the drag start
+                    // reference point. This makes the dragged node stay visually fixed
+                    // on the screen, while the canvas moves underneath.
+                    dragStartPosRef.current.x += panDx;
+                    dragStartPosRef.current.y += panDy;
+                }
+                
+                dispatch({ type: 'PAN', payload: { dx: panDx, dy: panDy } });
+
+                if (isDraggingRef.current) {
+                    // After panning, we must immediately recalculate and apply the new
+                    // drag offset to prevent the node from visually jumping with the canvas
+                    // before the next mouse move.
+                    updateDrag();
+                }
+                
+                return;
+            }
+
             if (isReadOnly) {
                 return;
             }
@@ -525,6 +602,7 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
         handleCenterView,
         onToggleCollapse,
         mindMapData.nodes,
+        updateDrag,
     ]);
 
      const handleCloseContextMenu = useCallback(() => {
@@ -651,33 +729,6 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
         startPanning(e);
     };
 
-    const updateDrag = useCallback(() => {
-        animationFrameId.current = null;
-        if (!isDraggingRef.current || !lastMouseEvent.current) {
-            return;
-        }
-    
-        const moveEvent = lastMouseEvent.current;
-        const { dragState: currentDragState, transform: currentTransform } = canvasStateRef.current;
-        if (!currentDragState || !canvasRef.current) return;
-    
-        const dx = (moveEvent.clientX - dragStartPosRef.current.x) / currentTransform.scale;
-        const dy = (moveEvent.clientY - dragStartPosRef.current.y) / currentTransform.scale;
-    
-        const canvasRect = canvasRef.current.getBoundingClientRect();
-        const canvasX = moveEvent.clientX - canvasRect.left;
-        const canvasY = moveEvent.clientY - canvasRect.top;
-    
-        dispatch({
-            type: 'DRAG_MOVE',
-            payload: {
-                offset: { dx, dy },
-                canvasPosition: { x: canvasX, y: canvasY },
-                allNodes: mindMapData.nodes,
-                visibleNodeUuids,
-            },
-        });
-    }, [dispatch, mindMapData.nodes, visibleNodeUuids]);
     
     const handleNodeDragStart = useCallback((nodeUuid: string, e: React.MouseEvent) => {
         if (isReadOnly) return;

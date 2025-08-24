@@ -12,6 +12,7 @@ const shortcuts = [
     { func: '添加同级节点', win: 'Enter', mac: 'Enter' },
     { func: '删除节点', win: 'Delete / Backspace', mac: 'Delete / Backspace' },
     { func: '展开/收起节点', win: 'Space', mac: 'Space' },
+    { func: '移动画布', win: '← ↑ → ↓', mac: '← ↑ → ↓' },
     { func: '撤销', win: 'Ctrl + Z', mac: '⌘ + Z' },
     { func: '重做', win: 'Ctrl + Y / Ctrl + Shift + Z', mac: '⌘ + Y / ⌘ + Shift + Z' },
     { func: '缩放', win: 'Ctrl + +/-', mac: '⌘ + +/-' },
