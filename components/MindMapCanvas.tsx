@@ -19,6 +19,48 @@ import { OperationType } from '../types';
 import { getNodeChainByUuid } from '../utils/dataChangeUtils';
 import { convertDataChangeInfo } from '../utils/callbackDataConverter';
 import { HORIZONTAL_SPACING, VERTICAL_SPACING } from '../constants';
+import { FiEye, FiEdit2 } from 'react-icons/fi';
+
+
+interface ReadOnlyToggleProps {
+    isReadOnly: boolean;
+    onToggleReadOnly: () => void;
+}
+
+const ReadOnlyToggle: React.FC<ReadOnlyToggleProps> = ({ isReadOnly, onToggleReadOnly }) => {
+    const handleSetReadOnly = () => {
+        if (!isReadOnly) {
+            onToggleReadOnly();
+        }
+    };
+
+    const handleSetEditable = () => {
+        if (isReadOnly) {
+            onToggleReadOnly();
+        }
+    };
+
+    return (
+        <div className="readonly-toggle">
+            <button
+                className={`readonly-toggle__button ${isReadOnly ? 'readonly-toggle__button--active' : ''}`}
+                onClick={handleSetReadOnly}
+                title="只读模式"
+            >
+                <FiEye />
+                只读模式
+            </button>
+            <button
+                className={`readonly-toggle__button ${!isReadOnly ? 'readonly-toggle__button--active' : ''}`}
+                onClick={handleSetEditable}
+                title="编辑模式"
+            >
+                <FiEdit2 />
+                编辑模式
+            </button>
+        </div>
+    );
+};
 
 
 interface MindMapCanvasProps {
@@ -75,6 +117,7 @@ interface MindMapCanvasProps {
     children?: React.ReactNode;
     newlyAddedNodeUuid: string | null;
     onNodeFocused: () => void;
+    showReadOnlyToggleButtons: boolean;
 }
 
 const SvgPath = React.memo(({ d, className }: { d: string, className: string }) => {
@@ -90,7 +133,7 @@ const SvgPath = React.memo(({ d, className }: { d: string, className: string }) 
 
 export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
     mindMapData, onAddChildNode, onAddSiblingNode, onDeleteNode, onFinishEditing, onUpdateNodePosition, onReparentNode, onReorderNode, onLayout, onUpdateNodeSize, onSave, showAITag, isDraggable = false, enableStrictDrag = false, enableNodeReorder = true, reorderableNodeTypes, showNodeType, showPriority, onToggleCollapse, onExpandNodes, onExpandAllNodes, onCollapseAllNodes, onExpandToLevel, onCollapseToLevel, onUpdateNodeType, onUpdateNodePriority,
-    onUndo, onRedo, canUndo, canRedo, showTopToolbar, showBottomToolbar, topToolbarCommands, bottomToolbarCommands, strictMode = false, showContextMenu = true, showCanvasContextMenu = true, priorityEditableNodeTypes, onDataChange, onExecuteUseCase, enableUseCaseExecution, canvasBackgroundColor, showBackgroundDots, showMinimap, getNodeBackgroundColor, enableReadOnlyUseCaseExecution, enableExpandCollapseByLevel, isReadOnly, onToggleReadOnly, isDirty, children, newlyAddedNodeUuid, onNodeFocused
+    onUndo, onRedo, canUndo, canRedo, showTopToolbar, showBottomToolbar, topToolbarCommands, bottomToolbarCommands, strictMode = false, showContextMenu = true, showCanvasContextMenu = true, priorityEditableNodeTypes, onDataChange, onExecuteUseCase, enableUseCaseExecution, canvasBackgroundColor, showBackgroundDots, showMinimap, getNodeBackgroundColor, enableReadOnlyUseCaseExecution, enableExpandCollapseByLevel, isReadOnly, onToggleReadOnly, isDirty, children, newlyAddedNodeUuid, onNodeFocused, showReadOnlyToggleButtons
 }) => {
     const [canvasState, dispatch] = useReducer(canvasReducer, {
         rootUuid: mindMapData.rootUuid,
@@ -692,6 +735,9 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
                 backgroundColor: canvasBackgroundColor
             }}
         >
+            {showReadOnlyToggleButtons && (
+                <ReadOnlyToggle isReadOnly={isReadOnly} onToggleReadOnly={onToggleReadOnly} />
+            )}
             {showTopToolbar && (
                 isTopToolbarVisible ? (
                     <Toolbar

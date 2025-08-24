@@ -58,7 +58,7 @@ export const BottomToolbar: React.FC<BottomToolbarProps> = ({
             case 'separator':
                 return <div key={`${commandId}-${index}`} className="bottom-toolbar__separator" />;
             case 'toggleReadOnly':
-                return <ToggleReadOnlyCommand key={`${commandId}-${index}`} onToggle={onToggleReadOnly} isReadOnly={isReadOnly} />;
+                return <ToggleReadOnlyCommand key={`${commandId}-${index}`} onToggle={onToggleReadOnly} isReadOnly={isReadOnly} isActive={!isReadOnly} />;
             case 'fitView':
                 return <FitViewCommand key={`${commandId}-${index}`} dispatch={dispatch} canvasRef={canvasRef} mindMapData={mindMapData} visibleNodeUuids={visibleNodeUuids} />;
             case 'centerView':

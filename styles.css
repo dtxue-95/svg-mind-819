@@ -899,3 +899,48 @@ foreignObject[data-dragging='true'] {
 .minimap-viewport:active {
   cursor: grabbing;
 }
+
+/* === ReadOnly Toggle (Top Right) === */
+.readonly-toggle {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 10;
+  display: flex;
+  background-color: var(--toolbar-background);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px var(--shadow-color);
+  padding: 4px;
+  pointer-events: all;
+  border: 1px solid #e8e8e8;
+}
+
+.readonly-toggle__button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: none;
+  background-color: transparent;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #555;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+  white-space: nowrap;
+}
+
+.readonly-toggle__button svg {
+    width: 16px;
+    height: 16px;
+}
+
+.readonly-toggle__button:hover:not(.readonly-toggle__button--active) {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.readonly-toggle__button--active {
+  background-color: #007aff;
+  color: white;
+}

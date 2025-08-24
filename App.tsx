@@ -54,6 +54,7 @@ interface AppProps {
     getNodeBackgroundColor?: (node: MindMapNodeData) => string | null | undefined;
     enableReadOnlyUseCaseExecution?: boolean;
     enableExpandCollapseByLevel?: boolean;
+    showReadOnlyToggleButtons?: boolean;
     children?: React.ReactNode;
 }
 
@@ -84,6 +85,7 @@ const App = forwardRef<AppRef, AppProps>(({
     getNodeBackgroundColor,
     enableReadOnlyUseCaseExecution = true,
     enableExpandCollapseByLevel = true,
+    showReadOnlyToggleButtons = true,
     children,
 }, ref) => {
     // State to hold the data for the mind map. Initialized from props.
@@ -280,6 +282,7 @@ const App = forwardRef<AppRef, AppProps>(({
                 isDirty={isDirty}
                 newlyAddedNodeUuid={newlyAddedNodeUuid}
                 onNodeFocused={() => setNewlyAddedNodeUuid(null)}
+                showReadOnlyToggleButtons={showReadOnlyToggleButtons}
             >
                 {children}
             </MindMapCanvas>
