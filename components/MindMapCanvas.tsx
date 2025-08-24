@@ -1,5 +1,6 @@
 
 
+
 import React, { useCallback, useRef, useEffect, useReducer, useMemo } from 'react';
 import type { MindMapData, CommandId, MindMapNodeData, NodeType, NodePriority, DataChangeCallback, CanvasTransform } from '../types';
 import { MindMapNode } from './MindMapNode';
@@ -113,6 +114,7 @@ interface MindMapCanvasProps {
     enableExpandCollapseByLevel: boolean;
     isReadOnly: boolean;
     onToggleReadOnly: () => void;
+    onSetReadOnly: (isReadOnly: boolean) => void;
     isDirty: boolean;
     children?: React.ReactNode;
     newlyAddedNodeUuid: string | null;
@@ -133,7 +135,7 @@ const SvgPath = React.memo(({ d, className }: { d: string, className: string }) 
 
 export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
     mindMapData, onAddChildNode, onAddSiblingNode, onDeleteNode, onFinishEditing, onUpdateNodePosition, onReparentNode, onReorderNode, onLayout, onUpdateNodeSize, onSave, showAITag, isDraggable = false, enableStrictDrag = false, enableNodeReorder = true, reorderableNodeTypes, showNodeType, showPriority, onToggleCollapse, onExpandNodes, onExpandAllNodes, onCollapseAllNodes, onExpandToLevel, onCollapseToLevel, onUpdateNodeType, onUpdateNodePriority,
-    onUndo, onRedo, canUndo, canRedo, showTopToolbar, showBottomToolbar, topToolbarCommands, bottomToolbarCommands, strictMode = false, showContextMenu = true, showCanvasContextMenu = true, priorityEditableNodeTypes, onDataChange, onExecuteUseCase, enableUseCaseExecution, canvasBackgroundColor, showBackgroundDots, showMinimap, getNodeBackgroundColor, enableReadOnlyUseCaseExecution, enableExpandCollapseByLevel, isReadOnly, onToggleReadOnly, isDirty, children, newlyAddedNodeUuid, onNodeFocused, showReadOnlyToggleButtons
+    onUndo, onRedo, canUndo, canRedo, showTopToolbar, showBottomToolbar, topToolbarCommands, bottomToolbarCommands, strictMode = false, showContextMenu = true, showCanvasContextMenu = true, priorityEditableNodeTypes, onDataChange, onExecuteUseCase, enableUseCaseExecution, canvasBackgroundColor, showBackgroundDots, showMinimap, getNodeBackgroundColor, enableReadOnlyUseCaseExecution, enableExpandCollapseByLevel, isReadOnly, onToggleReadOnly, onSetReadOnly, isDirty, children, newlyAddedNodeUuid, onNodeFocused, showReadOnlyToggleButtons
 }) => {
     const [canvasState, dispatch] = useReducer(canvasReducer, {
         rootUuid: mindMapData.rootUuid,
@@ -335,6 +337,35 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
             }
         }
     }, [isSearchActive, searchMatches, mindMapData, onExpandNodes]);
+    
+    const handleFitView = useCallback(() => {
+        if (!canvasRef.current) return;
+        const visibleNodes: Record<string, MindMapNodeData> = {};
+        visibleNodeUuids.forEach(uuid => {
+            if (mindMapData.nodes[uuid]) {
+                visibleNodes[uuid] = mindMapData.nodes[uuid];
+            }
+        });
+
+        const newTransform = viewCommands.fitView(
+            visibleNodes,
+            canvasRef.current.getBoundingClientRect()
+        );
+        dispatch({ type: 'SET_TRANSFORM', payload: newTransform });
+    }, [dispatch, canvasRef, mindMapData.nodes, visibleNodeUuids]);
+
+    const handleCenterView = useCallback(() => {
+        if (!canvasRef.current) return;
+        const nodeUuidToCenter = selectedNodeUuid || mindMapData.rootUuid;
+        const newTransform = viewCommands.centerView(
+            mindMapData.nodes,
+            nodeUuidToCenter,
+            canvasRef.current.getBoundingClientRect(),
+            transform.scale
+        );
+        dispatch({ type: 'SET_TRANSFORM', payload: newTransform });
+    }, [dispatch, canvasRef, mindMapData, selectedNodeUuid, transform.scale]);
+
 
     // Effect for keyboard shortcuts
     useEffect(() => {
@@ -350,6 +381,28 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
 
             const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
             const metaOrCtrl = isMac ? e.metaKey : e.ctrlKey;
+            
+            // Shortcuts for read-only/edit mode, fit view, and center view
+            if (e.shiftKey && e.key.toLowerCase() === 'r') {
+                e.preventDefault();
+                onSetReadOnly(true); // Set to read-only mode
+                return;
+            }
+            if (e.shiftKey && e.key.toLowerCase() === 'w') {
+                e.preventDefault();
+                onSetReadOnly(false); // Set to edit mode
+                return;
+            }
+            if (e.shiftKey && e.key.toLowerCase() === 'f') {
+                e.preventDefault();
+                handleFitView();
+                return;
+            }
+            if (e.shiftKey && e.key.toLowerCase() === 'c') {
+                e.preventDefault();
+                handleCenterView();
+                return;
+            }
 
             if (metaOrCtrl && e.key.toLowerCase() === 'f') {
                 e.preventDefault();
@@ -442,6 +495,9 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
         onAddChildNode,
         onAddSiblingNode,
         onDeleteNode,
+        onSetReadOnly,
+        handleFitView,
+        handleCenterView,
     ]);
 
      const handleCloseContextMenu = useCallback(() => {
@@ -682,34 +738,6 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
     const selectedNode: MindMapNodeData | null = selectedNodeUuid ? mindMapData.nodes[selectedNodeUuid] : null;
     const contextMenuNode = contextMenu.nodeUuid ? mindMapData.nodes[contextMenu.nodeUuid] : null;
     
-    const handleFitView = useCallback(() => {
-        if (!canvasRef.current) return;
-        const visibleNodes: Record<string, MindMapNodeData> = {};
-        visibleNodeUuids.forEach(uuid => {
-            if (mindMapData.nodes[uuid]) {
-                visibleNodes[uuid] = mindMapData.nodes[uuid];
-            }
-        });
-
-        const newTransform = viewCommands.fitView(
-            visibleNodes,
-            canvasRef.current.getBoundingClientRect()
-        );
-        dispatch({ type: 'SET_TRANSFORM', payload: newTransform });
-    }, [dispatch, canvasRef, mindMapData.nodes, visibleNodeUuids]);
-
-    const handleCenterView = useCallback(() => {
-        if (!canvasRef.current) return;
-        const nodeUuidToCenter = selectedNodeUuid || mindMapData.rootUuid;
-        const newTransform = viewCommands.centerView(
-            mindMapData.nodes,
-            nodeUuidToCenter,
-            canvasRef.current.getBoundingClientRect(),
-            transform.scale
-        );
-        dispatch({ type: 'SET_TRANSFORM', payload: newTransform });
-    }, [dispatch, canvasRef, mindMapData, selectedNodeUuid, transform.scale]);
-
     const isExpandAllDisabled = useMemo(() => {
         return !Object.values(mindMapData.nodes).some(n => n.isCollapsed);
     }, [mindMapData.nodes]);
