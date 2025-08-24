@@ -1,3 +1,5 @@
+
+
 import React, { useImperativeHandle, forwardRef, useCallback, useState, useEffect, useMemo } from 'react';
 import { useMindMap } from './hooks/useMindMap';
 import { MindMapCanvas } from './components/MindMapCanvas';
@@ -55,6 +57,7 @@ interface AppProps {
     enableReadOnlyUseCaseExecution?: boolean;
     enableExpandCollapseByLevel?: boolean;
     showReadOnlyToggleButtons?: boolean;
+    showShortcutsButton?: boolean;
     children?: React.ReactNode;
 }
 
@@ -86,6 +89,7 @@ const App = forwardRef<AppRef, AppProps>(({
     enableReadOnlyUseCaseExecution = true,
     enableExpandCollapseByLevel = true,
     showReadOnlyToggleButtons = true,
+    showShortcutsButton = true,
     children,
 }, ref) => {
     // State to hold the data for the mind map. Initialized from props.
@@ -279,10 +283,12 @@ const App = forwardRef<AppRef, AppProps>(({
                 enableReadOnlyUseCaseExecution={enableReadOnlyUseCaseExecution}
                 isReadOnly={isReadOnly}
                 onToggleReadOnly={handleToggleReadOnly}
+                onSetReadOnly={setIsReadOnly}
                 isDirty={isDirty}
                 newlyAddedNodeUuid={newlyAddedNodeUuid}
                 onNodeFocused={() => setNewlyAddedNodeUuid(null)}
                 showReadOnlyToggleButtons={showReadOnlyToggleButtons}
+                showShortcutsButton={showShortcutsButton}
             >
                 {children}
             </MindMapCanvas>

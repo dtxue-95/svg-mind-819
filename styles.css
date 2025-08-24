@@ -900,12 +900,49 @@ foreignObject[data-dragging='true'] {
   cursor: grabbing;
 }
 
-/* === ReadOnly Toggle (Top Right) === */
-.readonly-toggle {
+/* === Top Right Controls === */
+.top-right-controls {
   position: absolute;
   top: 20px;
   right: 20px;
   z-index: 10;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  pointer-events: all;
+}
+
+.shortcuts-toggle-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  height: 40px;
+  border: 1px solid #e8e8e8;
+  background-color: var(--toolbar-background);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #555;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s, box-shadow 0.2s;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px var(--shadow-color);
+}
+
+.shortcuts-toggle-button:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  border-color: #d0d0d0;
+}
+
+.shortcuts-toggle-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.readonly-toggle {
+  position: relative;
+  z-index: auto;
   display: flex;
   background-color: var(--toolbar-background);
   border-radius: 8px;
@@ -943,4 +980,133 @@ foreignObject[data-dragging='true'] {
 .readonly-toggle__button--active {
   background-color: #007aff;
   color: white;
+}
+
+
+/* === Shortcuts Panel (Popover) === */
+@keyframes fadeInPopover {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.shortcuts-panel {
+  position: absolute;
+  z-index: 1001;
+  background-color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 5px 25px rgba(0, 0, 0, 0.15);
+  width: 90%;
+  max-width: 560px;
+  overflow: hidden;
+  animation: fadeInPopover 0.15s ease-out;
+  border: 1px solid #e8e8e8;
+  pointer-events: all;
+}
+
+.shortcuts-panel::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  right: 60px; /* Adjust to align with button center */
+  width: 16px;
+  height: 16px;
+  background-color: #fff;
+  border-top: 1px solid #e8e8e8;
+  border-left: 1px solid #e8e8e8;
+  transform: rotate(45deg);
+  z-index: -1;
+}
+
+.shortcuts-panel__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.shortcuts-panel__header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.shortcuts-panel__close-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: none;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+  transition: background-color 0.2s;
+  color: #6c757d;
+}
+
+.shortcuts-panel__close-button:hover {
+  background-color: #f0f0f0;
+}
+
+.shortcuts-panel__content {
+  padding: 4px 16px 16px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.shortcuts-panel__row {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.shortcuts-panel__row:last-child {
+  border-bottom: none;
+}
+
+.shortcuts-panel__table-header {
+  font-weight: 500;
+  color: #666;
+  font-size: 13px;
+  padding-bottom: 10px;
+}
+
+.shortcuts-panel__col-func {
+  flex: 2;
+  min-width: 110px;
+  padding-right: 8px;
+  font-size: 14px;
+  color: #333;
+}
+
+.shortcuts-panel__col-key {
+  flex: 4;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.shortcuts-panel__col-key svg {
+  margin-right: 4px;
+  color: #555;
+  width: 14px;
+  height: 14px;
+}
+
+.shortcuts-panel__content kbd {
+  background-color: #f0f1f2;
+  border: 1px solid #d9d9d9;
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-family: inherit;
+  font-size: 12px;
+  box-shadow: none;
+  white-space: nowrap;
 }

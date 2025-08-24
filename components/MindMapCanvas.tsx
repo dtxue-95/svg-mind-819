@@ -1,7 +1,5 @@
 
-
-
-import React, { useCallback, useRef, useEffect, useReducer, useMemo } from 'react';
+import React, { useCallback, useRef, useEffect, useReducer, useMemo, useState } from 'react';
 import type { MindMapData, CommandId, MindMapNodeData, NodeType, NodePriority, DataChangeCallback, CanvasTransform } from '../types';
 import { MindMapNode } from './MindMapNode';
 import { Toolbar } from './Toolbar';
@@ -11,6 +9,7 @@ import { ToolbarHandle } from './ToolbarHandle';
 import { ContextMenu } from './ContextMenu';
 import { CanvasContextMenu } from './CanvasContextMenu';
 import { Minimap } from './Minimap';
+import { ShortcutsModal as ShortcutsPanel } from './ShortcutsModal';
 import { generateElbowPath } from '../utils/generateElbowPath';
 import { canvasReducer } from '../state/canvasReducer';
 import { getInitialCanvasState } from '../state/canvasState';
@@ -20,7 +19,7 @@ import { OperationType } from '../types';
 import { getNodeChainByUuid } from '../utils/dataChangeUtils';
 import { convertDataChangeInfo } from '../utils/callbackDataConverter';
 import { HORIZONTAL_SPACING, VERTICAL_SPACING } from '../constants';
-import { FiEye, FiEdit2 } from 'react-icons/fi';
+import { FiEye, FiEdit2, FiCommand } from 'react-icons/fi';
 
 
 interface ReadOnlyToggleProps {
@@ -120,6 +119,7 @@ interface MindMapCanvasProps {
     newlyAddedNodeUuid: string | null;
     onNodeFocused: () => void;
     showReadOnlyToggleButtons: boolean;
+    showShortcutsButton: boolean;
 }
 
 const SvgPath = React.memo(({ d, className }: { d: string, className: string }) => {
@@ -135,7 +135,7 @@ const SvgPath = React.memo(({ d, className }: { d: string, className: string }) 
 
 export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
     mindMapData, onAddChildNode, onAddSiblingNode, onDeleteNode, onFinishEditing, onUpdateNodePosition, onReparentNode, onReorderNode, onLayout, onUpdateNodeSize, onSave, showAITag, isDraggable = false, enableStrictDrag = false, enableNodeReorder = true, reorderableNodeTypes, showNodeType, showPriority, onToggleCollapse, onExpandNodes, onExpandAllNodes, onCollapseAllNodes, onExpandToLevel, onCollapseToLevel, onUpdateNodeType, onUpdateNodePriority,
-    onUndo, onRedo, canUndo, canRedo, showTopToolbar, showBottomToolbar, topToolbarCommands, bottomToolbarCommands, strictMode = false, showContextMenu = true, showCanvasContextMenu = true, priorityEditableNodeTypes, onDataChange, onExecuteUseCase, enableUseCaseExecution, canvasBackgroundColor, showBackgroundDots, showMinimap, getNodeBackgroundColor, enableReadOnlyUseCaseExecution, enableExpandCollapseByLevel, isReadOnly, onToggleReadOnly, onSetReadOnly, isDirty, children, newlyAddedNodeUuid, onNodeFocused, showReadOnlyToggleButtons
+    onUndo, onRedo, canUndo, canRedo, showTopToolbar, showBottomToolbar, topToolbarCommands, bottomToolbarCommands, strictMode = false, showContextMenu = true, showCanvasContextMenu = true, priorityEditableNodeTypes, onDataChange, onExecuteUseCase, enableUseCaseExecution, canvasBackgroundColor, showBackgroundDots, showMinimap, getNodeBackgroundColor, enableReadOnlyUseCaseExecution, enableExpandCollapseByLevel, isReadOnly, onToggleReadOnly, onSetReadOnly, isDirty, children, newlyAddedNodeUuid, onNodeFocused, showReadOnlyToggleButtons, showShortcutsButton
 }) => {
     const [canvasState, dispatch] = useReducer(canvasReducer, {
         rootUuid: mindMapData.rootUuid,
@@ -153,6 +153,10 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
     const canvasRef = useRef<HTMLDivElement>(null);
     const panStartPos = useRef({ x: 0, y: 0 });
     const dragStartPosRef = useRef({ x: 0, y: 0 });
+    const shortcutsButtonRef = useRef<HTMLButtonElement>(null);
+
+    const [isShortcutsPanelVisible, setIsShortcutsPanelVisible] = useState(false);
+    const [shortcutsPanelPosition, setShortcutsPanelPosition] = useState<{top: number; right: number}>({ top: 0, right: 0 });
 
     // Refs for smooth dragging with requestAnimationFrame
     const animationFrameId = useRef<number | null>(null);
@@ -382,6 +386,14 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
             const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
             const metaOrCtrl = isMac ? e.metaKey : e.ctrlKey;
             
+            if (metaOrCtrl && e.key.toLowerCase() === 's') {
+                e.preventDefault();
+                if (!isReadOnly) {
+                    onSave();
+                }
+                return;
+            }
+
             // Shortcuts for read-only/edit mode, fit view, and center view
             if (e.shiftKey && e.key.toLowerCase() === 'r') {
                 e.preventDefault();
@@ -496,6 +508,7 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
         onAddSiblingNode,
         onDeleteNode,
         onSetReadOnly,
+        onSave,
         handleFitView,
         handleCenterView,
     ]);
@@ -507,15 +520,36 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
      const handleCloseCanvasContextMenu = useCallback(() => {
         dispatch({ type: 'HIDE_CANVAS_CONTEXT_MENU' });
     }, [dispatch]);
+    
+    const handleToggleShortcutsPanel = useCallback(() => {
+        if (shortcutsButtonRef.current && canvasRef.current) {
+            const buttonRect = shortcutsButtonRef.current.getBoundingClientRect();
+            const canvasRect = canvasRef.current.getBoundingClientRect();
+    
+            setShortcutsPanelPosition({
+                top: buttonRect.bottom - canvasRect.top + 8,
+                right: canvasRect.right - buttonRect.right,
+            });
+        }
+        setIsShortcutsPanelVisible(prev => !prev);
+    }, []);
+
+    const handleCloseShortcutsPanel = useCallback(() => {
+        setIsShortcutsPanelVisible(false);
+    }, []);
 
     useEffect(() => {
         if (!contextMenu.isVisible && !canvasContextMenu.isVisible) return;
 
         const handleClickOutside = (event: MouseEvent) => {
             const target = event.target as HTMLElement;
-            if (!target.closest('.context-menu')) {
-                handleCloseContextMenu();
-                handleCloseCanvasContextMenu();
+
+            // Close Context Menus
+            if (contextMenu.isVisible || canvasContextMenu.isVisible) {
+                 if (!target.closest('.context-menu')) {
+                    handleCloseContextMenu();
+                    handleCloseCanvasContextMenu();
+                }
             }
         };
 
@@ -763,9 +797,17 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
                 backgroundColor: canvasBackgroundColor
             }}
         >
-            {showReadOnlyToggleButtons && (
-                <ReadOnlyToggle isReadOnly={isReadOnly} onToggleReadOnly={onToggleReadOnly} />
-            )}
+            <div className="top-right-controls">
+                {showShortcutsButton && (
+                    <button ref={shortcutsButtonRef} className="shortcuts-toggle-button" onClick={handleToggleShortcutsPanel} title="快捷键">
+                        <FiCommand /> 快捷键
+                    </button>
+                )}
+                {showReadOnlyToggleButtons && (
+                    <ReadOnlyToggle isReadOnly={isReadOnly} onToggleReadOnly={onToggleReadOnly} />
+                )}
+            </div>
+
             {showTopToolbar && (
                 isTopToolbarVisible ? (
                     <Toolbar
@@ -1010,6 +1052,8 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
                     onToggleCollapse={onToggleCollapse}
                 />
             )}
+            
+            {isShortcutsPanelVisible && <ShortcutsPanel position={shortcutsPanelPosition} onClose={handleCloseShortcutsPanel} />}
         </div>
     );
 };
