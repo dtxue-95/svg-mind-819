@@ -339,27 +339,8 @@ foreignObject {
   border-radius: 4px;
   font-size: 13px;
   font-weight: 500;
-  border: 1px solid;
   white-space: nowrap;
-}
-
-/* Specific colors for case tags */
-.case-type-tag--function {
-  background-color: #e6f0ff; /* same as USE_CASE */
-  border-color: #007aff;
-  color: #007aff;
-}
-
-.case-type-tag--api {
-  background-color: #eafaf1; /* same as MODULE */
-  border-color: #34c759;
-  color: #34c759;
-}
-
-.case-type-tag--ui {
-  background-color: #f6eaff; /* same as PRECONDITION */
-  border-color: #af52de;
-  color: #af52de;
+  border: none;
 }
 
 .mind-map-node__text-wrapper {

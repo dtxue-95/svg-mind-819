@@ -73,9 +73,18 @@ export const createInitialMindMap = (rawData: RawNode): MindMapData => {
         
         if (rawNode.nodeType === 'caseNode') {
             const tags: ('function' | 'api' | 'ui')[] = [];
-            if (rawNode.functionTestCaseDTO) tags.push('function');
-            if (rawNode.apiTestCaseDTO) tags.push('api');
-            if (rawNode.uiTestCaseDTO) tags.push('ui');
+            if (rawNode.functionTestCaseDTO) {
+                tags.push('function');
+                nodeData.functionTestCaseStatusCode = (rawNode.functionTestCaseDTO as any)?.ComprehensivePassStatusCode;
+            }
+            if (rawNode.apiTestCaseDTO) {
+                tags.push('api');
+                nodeData.apiTestCaseStatusCode = (rawNode.apiTestCaseDTO as any)?.ComprehensivePassStatusCode;
+            }
+            if (rawNode.uiTestCaseDTO) {
+                tags.push('ui');
+                nodeData.uiTestCaseStatusCode = (rawNode.uiTestCaseDTO as any)?.ComprehensivePassStatusCode;
+            }
             
             if (tags.length > 0) {
                 nodeData.caseTags = tags;

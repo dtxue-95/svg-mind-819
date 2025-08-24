@@ -28,6 +28,14 @@ interface MindMapNodeProps {
     getNodeBackgroundColor?: (node: MindMapNodeData) => string | null | undefined;
 }
 
+const STATUS_COLOR_PROPS: Record<string, { color: string; backgroundColor: string; }> = {
+    pending: { color: '#007aff', backgroundColor: '#e6f0ff' }, // blue
+    pass: { color: '#34c759', backgroundColor: '#eafaf1' }, // green
+    not_pass: { color: '#ff3b30', backgroundColor: '#fff0ef' }, // red
+    blocked: { color: '#ff9500', backgroundColor: '#fff7e6' }, // orange
+    default: { color: '#8e8e93', backgroundColor: '#f4f4f7' }, // default gray
+};
+
 const MindMapNodeComponent: React.FC<MindMapNodeProps> = ({
     node, isSelected, isBeingDragged, onSelect, onFinishEditing, onDragStart, onUpdateSize, showAITag, isReadOnly, isDraggable, isSearchMatch, isCurrentSearchMatch, searchQuery, showNodeType = true, showPriority = true, onReadOnlyPanStart, onToggleCollapse, descendantCount, onContextMenu, isPossibleDropTarget, isValidDropTarget, isInvalidDropTarget, getNodeBackgroundColor
 }) => {
@@ -313,11 +321,37 @@ const MindMapNodeComponent: React.FC<MindMapNodeProps> = ({
 
                 {node.caseTags && node.caseTags.length > 0 && (
                     <div className="case-type-tag-container">
-                        {node.caseTags.map(tag => (
-                            <span key={tag} className={`case-type-tag case-type-tag--${tag}`}>
-                                {tag === 'function' ? '功能' : tag === 'api' ? '接口' : 'UI'}
-                            </span>
-                        ))}
+                        {node.caseTags.map(tag => {
+                             let statusCode: string | null | undefined;
+                             switch (tag) {
+                                 case 'function':
+                                     statusCode = node.functionTestCaseStatusCode;
+                                     break;
+                                 case 'api':
+                                     statusCode = node.apiTestCaseStatusCode;
+                                     break;
+                                 case 'ui':
+                                     statusCode = node.uiTestCaseStatusCode;
+                                     break;
+                                 default:
+                                     statusCode = null;
+                             }
+                             
+                             const props = STATUS_COLOR_PROPS[statusCode || 'default'] || STATUS_COLOR_PROPS.default;
+
+                            return (
+                                <span
+                                    key={tag}
+                                    className={`case-type-tag case-type-tag--${tag}`}
+                                    style={{
+                                        color: props.color,
+                                        backgroundColor: props.backgroundColor,
+                                    }}
+                                >
+                                    {tag === 'function' ? '功能' : tag === 'api' ? '接口' : 'UI'}
+                                </span>
+                            );
+                        })}
                     </div>
                 )}
 

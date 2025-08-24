@@ -22,6 +22,9 @@ export interface MindMapNodeData {
   generateModeName?: 'AI' | '人工';
   isCollapsed?: boolean;
   caseTags?: ('function' | 'api' | 'ui')[];
+  functionTestCaseStatusCode?: string | null;
+  apiTestCaseStatusCode?: string | null;
+  uiTestCaseStatusCode?: string | null;
   sortNumber?: number;
 
   // Store original data fields as well
