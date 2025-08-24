@@ -1,4 +1,11 @@
 
+
+
+
+
+
+
+
 import React, { useCallback, useRef, useEffect, useReducer, useMemo, useState } from 'react';
 import type { MindMapData, CommandId, MindMapNodeData, NodeType, NodePriority, DataChangeCallback, CanvasTransform } from '../types';
 import { MindMapNode } from './MindMapNode';
@@ -780,17 +787,18 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
                 const canvasRect = canvasRef.current.getBoundingClientRect();
                 const newPanDirection = { x: 0, y: 0 };
     
-                const threshold = 100;
+                const horizontalThreshold = canvasRect.width / 3;
+                const verticalThreshold = canvasRect.height / 3;
 
-                if (moveEvent.clientX < canvasRect.left + threshold) {
+                if (moveEvent.clientX < canvasRect.left + horizontalThreshold) {
                     newPanDirection.x = -1; // Mouse on left, pan canvas right
-                } else if (moveEvent.clientX > canvasRect.right - threshold) {
+                } else if (moveEvent.clientX > canvasRect.right - horizontalThreshold) {
                     newPanDirection.x = 1; // Mouse on right, pan canvas left
                 }
     
-                if (moveEvent.clientY < canvasRect.top + threshold) {
+                if (moveEvent.clientY < canvasRect.top + verticalThreshold) {
                     newPanDirection.y = -1; // Mouse on top, pan canvas down
-                } else if (moveEvent.clientY > canvasRect.bottom - threshold) {
+                } else if (moveEvent.clientY > canvasRect.bottom - verticalThreshold) {
                     newPanDirection.y = 1; // Mouse on bottom, pan canvas up
                 }
     
