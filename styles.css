@@ -254,26 +254,53 @@ foreignObject {
 /* New AI Ribbon Styles (no pseudo-elements) */
 .ai-ribbon-wrapper {
   position: absolute;
-  width: 80px;
-  height: 80px;
-  top: -40px;
-  left: -40px;
+  width: 20px;
+  height: 20px;
+  top: -10px;
+  left: -10px;
   z-index: 2;
   transform: rotate(-45deg);
 }
 
 .ai-ribbon-main {
     position: absolute;
-    top: 42px;
-    left: 25px;
+    top: 15px;
+    left: -5px;
     width: 28px;
-    background-color: #7C3AED;
+    background-color: #a57bece1;
     display: flex;
     justify-content: center;
     align-items: center;
     color: white;
     font-weight: 600;
-    font-size: 10px;
+    font-size: 8px;
+    box-shadow: 0 2px 3px rgba(0, 0, 0, 0.25);
+    border-top-left-radius: 18px;
+    border-top-right-radius: 18px;
+}
+
+.manual-ribbon-wrapper {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  top: -10px;
+  left: -10px;
+  z-index: 2;
+  transform: rotate(-45deg);
+}
+
+.manual-ribbon-main {
+    position: absolute;
+    top: 15px;
+    left: -5px;
+    width: 28px;
+    background-color: #44c871ab;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    font-weight: 600;
+    font-size: 8px;
     box-shadow: 0 2px 3px rgba(0, 0, 0, 0.25);
     border-top-left-radius: 18px;
     border-top-right-radius: 18px;

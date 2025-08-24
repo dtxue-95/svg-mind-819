@@ -89,6 +89,7 @@ const App = forwardRef<AppRef, AppProps>(({
     // State to hold the data for the mind map. Initialized from props.
     const [currentData, setCurrentData] = useState<RawNode>(initialData);
     const [isReadOnly, setIsReadOnly] = useState(true);
+    const [newlyAddedNodeUuid, setNewlyAddedNodeUuid] = useState<string | null>(null);
 
     // Effect to update the internal state when the initialData prop changes.
     // This allows the mind map to update when data is loaded asynchronously.
@@ -130,6 +131,20 @@ const App = forwardRef<AppRef, AppProps>(({
         resetHistory,
     } = useMindMap(initialMindMap, strictMode, onDataChange);
 
+    const handleAddChildNode = useCallback((parentUuid: string) => {
+        const newUuid = addChildNode(parentUuid);
+        if (newUuid) {
+            setNewlyAddedNodeUuid(newUuid);
+        }
+    }, [addChildNode]);
+
+    const handleAddSiblingNode = useCallback((nodeUuid: string) => {
+        const newUuid = addSiblingNode(nodeUuid);
+        if (newUuid) {
+            setNewlyAddedNodeUuid(newUuid);
+        }
+    }, [addSiblingNode]);
+
     const constructSavePayload = useCallback((): DataChangeInfo => {
         const info = {
             operationType: OperationType.SAVE,
@@ -166,6 +181,8 @@ const App = forwardRef<AppRef, AppProps>(({
             uuidChainNodes: chain.nodes,
             parentUuidChain: chain.uuids.slice(0, -1),
             parentUuidChainNodes: chain.nodes.slice(0, -1),
+            executeTags:node.caseTags,
+            executeId:node.id
         };
 
         onExecuteUseCase(convertDataChangeInfo(info));
@@ -212,8 +229,8 @@ const App = forwardRef<AppRef, AppProps>(({
         <main>
             <MindMapCanvas
                 mindMapData={mindMap}
-                onAddChildNode={addChildNode}
-                onAddSiblingNode={addSiblingNode}
+                onAddChildNode={handleAddChildNode}
+                onAddSiblingNode={handleAddSiblingNode}
                 onDeleteNode={deleteNode}
                 onFinishEditing={finishNodeEditing}
                 onUpdateNodePosition={updateNodePosition}
@@ -261,6 +278,8 @@ const App = forwardRef<AppRef, AppProps>(({
                 isReadOnly={isReadOnly}
                 onToggleReadOnly={handleToggleReadOnly}
                 isDirty={isDirty}
+                newlyAddedNodeUuid={newlyAddedNodeUuid}
+                onNodeFocused={() => setNewlyAddedNodeUuid(null)}
             >
                 {children}
             </MindMapCanvas>

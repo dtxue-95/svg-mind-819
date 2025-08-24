@@ -61,7 +61,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     const addSiblingDisabled = isRoot || isReadOnly || (strictMode && node.nodeType === 'EXPECTED_RESULT');
     const deleteDisabled = isRoot || isReadOnly;
     const toggleCollapseDisabled = !node.childNodeList || node.childNodeList.length === 0;
-    const executeUseCaseDisabled = isReadOnly || !enableUseCaseExecution;
+    const executeUseCaseDisabled = isReadOnly || !enableUseCaseExecution || !node.id;
 
     let addChildDisabled = isReadOnly;
     if (strictMode) {

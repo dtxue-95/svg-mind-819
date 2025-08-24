@@ -280,6 +280,11 @@ const MindMapNodeComponent: React.FC<MindMapNodeProps> = ({
                     <div className="ai-ribbon-main">AI</div>
                 </div>
             )}
+            {node.generateModeName === '人工' && showAITag && (
+                <div className="manual-ribbon-wrapper">
+                    <div className="manual-ribbon-main">人工</div>
+                </div>
+            )}
             <div className="mind-map-node__content" ref={contentRef} style={contentStyle}>
                 {showNodeType && node.nodeType !== 'GENERAL' && (
                     <span 

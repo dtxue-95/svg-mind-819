@@ -73,6 +73,8 @@ interface MindMapCanvasProps {
     onToggleReadOnly: () => void;
     isDirty: boolean;
     children?: React.ReactNode;
+    newlyAddedNodeUuid: string | null;
+    onNodeFocused: () => void;
 }
 
 const SvgPath = React.memo(({ d, className }: { d: string, className: string }) => {
@@ -88,7 +90,7 @@ const SvgPath = React.memo(({ d, className }: { d: string, className: string }) 
 
 export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
     mindMapData, onAddChildNode, onAddSiblingNode, onDeleteNode, onFinishEditing, onUpdateNodePosition, onReparentNode, onReorderNode, onLayout, onUpdateNodeSize, onSave, showAITag, isDraggable = false, enableStrictDrag = false, enableNodeReorder = true, reorderableNodeTypes, showNodeType, showPriority, onToggleCollapse, onExpandNodes, onExpandAllNodes, onCollapseAllNodes, onExpandToLevel, onCollapseToLevel, onUpdateNodeType, onUpdateNodePriority,
-    onUndo, onRedo, canUndo, canRedo, showTopToolbar, showBottomToolbar, topToolbarCommands, bottomToolbarCommands, strictMode = false, showContextMenu = true, showCanvasContextMenu = true, priorityEditableNodeTypes, onDataChange, onExecuteUseCase, enableUseCaseExecution, canvasBackgroundColor, showBackgroundDots, showMinimap, getNodeBackgroundColor, enableReadOnlyUseCaseExecution, enableExpandCollapseByLevel, isReadOnly, onToggleReadOnly, isDirty, children
+    onUndo, onRedo, canUndo, canRedo, showTopToolbar, showBottomToolbar, topToolbarCommands, bottomToolbarCommands, strictMode = false, showContextMenu = true, showCanvasContextMenu = true, priorityEditableNodeTypes, onDataChange, onExecuteUseCase, enableUseCaseExecution, canvasBackgroundColor, showBackgroundDots, showMinimap, getNodeBackgroundColor, enableReadOnlyUseCaseExecution, enableExpandCollapseByLevel, isReadOnly, onToggleReadOnly, isDirty, children, newlyAddedNodeUuid, onNodeFocused
 }) => {
     const [canvasState, dispatch] = useReducer(canvasReducer, {
         rootUuid: mindMapData.rootUuid,
@@ -231,6 +233,45 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
             }
         }
     }, [currentMatchIndex, isSearchActive, searchMatches, mindMapData.nodes, transform.scale]);
+
+    // Effect for auto-selecting and centering newly added node
+    useEffect(() => {
+        // Check if there's a node to focus on, if it exists in the current data, and if the canvas is ready.
+        if (newlyAddedNodeUuid && mindMapData.nodes[newlyAddedNodeUuid] && canvasRef.current) {
+            
+            // Expand ancestors if they are collapsed to make the new node visible
+            const ancestors = findAllAncestorUuids(mindMapData, newlyAddedNodeUuid);
+            const ancestorsToExpand = ancestors.filter(ancestorUuid => {
+                const node = mindMapData.nodes[ancestorUuid];
+                return node && node.isCollapsed;
+            });
+
+            if (ancestorsToExpand.length > 0) {
+                onExpandNodes(ancestorsToExpand);
+                // The effect will re-run after the expansion and layout are complete.
+                // We return here to wait for the re-render before centering.
+                return;
+            }
+
+            // 1. Select the new node
+            dispatch({ type: 'SELECT_NODE', payload: { nodeUuid: newlyAddedNodeUuid } });
+
+            // 2. Calculate the transform to center the view on the new node
+            const newTransform = viewCommands.centerView(
+                mindMapData.nodes,
+                newlyAddedNodeUuid,
+                canvasRef.current.getBoundingClientRect(),
+                transform.scale
+            );
+            
+            // 3. Apply the new transform. The existing CSS transition on the <g> element will animate this.
+            dispatch({ type: 'SET_TRANSFORM', payload: newTransform });
+
+            // 4. Notify the parent component that focusing is complete to reset the trigger state.
+            onNodeFocused();
+        }
+    }, [newlyAddedNodeUuid, mindMapData, onNodeFocused, transform.scale, dispatch, onExpandNodes]);
+
 
     // Effect to expand ancestors when search results change
     useEffect(() => {

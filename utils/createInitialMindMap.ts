@@ -16,7 +16,7 @@ export const createInitialMindMap = (rawData: RawNode): MindMapData => {
             nodes: {
                 [rootUuid]: {
                     uuid: rootUuid,
-                    name: 'Central Idea',
+                    name: '接口异常',
                     parentUuid: null,
                     childNodeList: [],
                     position: { x: 0, y: 0 },

@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import type { MindMapData, MindMapNodeData, NodeType, DataChangeCallback } from '../types';
-import { NODE_TYPE_PROPS, MIN_NODE_HEIGHT } from '../constants';
+import { NODE_TYPE_PROPS, MIN_NODE_HEIGHT, MIN_NODE_WIDTH } from '../constants';
 import { findAllDescendantUuids } from '../utils/findAllDescendantIds';
 import { getNodeChainByUuid } from '../utils/dataChangeUtils';
 import type { MindMapAction } from '../state/mindMapReducer';
@@ -18,7 +18,7 @@ export const useNodeActions = (
     strictMode: boolean,
     onDataChange?: DataChangeCallback
 ) => {
-    const addChildNode = useCallback((parentUuid: string) => {
+    const addChildNode = useCallback((parentUuid: string): string | undefined => {
         const parentNode = mindMap.nodes[parentUuid];
         if (!parentNode) return;
 
@@ -34,6 +34,7 @@ export const useNodeActions = (
                 childNodeList: [],
                 position: { x: 0, y: 0 },
                 height: MIN_NODE_HEIGHT,
+                width: MIN_NODE_WIDTH,
                 nodeType: 'GENERAL',
                 priorityLevel: null,
                 isCollapsed: false,
@@ -108,6 +109,7 @@ export const useNodeActions = (
                 childNodeList: [],
                 position: { x: 0, y: 0 },
                 height: MIN_NODE_HEIGHT,
+                width: MIN_NODE_WIDTH,
                 nodeType: newNodeType,
                 priorityLevel: null,
                 isCollapsed: false,
@@ -160,9 +162,11 @@ export const useNodeActions = (
         }
         dispatch({ type: 'SET_MIND_MAP', payload: laidOutMap });
 
+        return newUuid;
+
     }, [mindMap, dispatch, performLayout, strictMode, onDataChange]);
 
-    const addSiblingNode = useCallback((nodeUuid: string) => {
+    const addSiblingNode = useCallback((nodeUuid: string): string | undefined => {
         const parentUuid = mindMap.nodes[nodeUuid]?.parentUuid;
         if (!parentUuid) {
             console.warn('Cannot add sibling to the root node.');
@@ -178,12 +182,11 @@ export const useNodeActions = (
              }
              if (parentNode?.nodeType === 'USE_CASE' && node?.nodeType !== 'PRECONDITION') {
                  // Sibling of a STEP is a STEP, Sibling of PRECONDITION is a STEP
-                 addChildNode(parentUuid);
-                 return;
+                 return addChildNode(parentUuid);
              }
         }
         
-        addChildNode(parentUuid);
+        return addChildNode(parentUuid);
     }, [mindMap.nodes, addChildNode, strictMode]);
 
     const deleteNode = useCallback((nodeUuid: string) => {
