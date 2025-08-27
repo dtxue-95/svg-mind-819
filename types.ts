@@ -25,6 +25,7 @@ export interface MindMapNodeData {
   functionTestCaseStatusCode?: string | null;
   apiTestCaseStatusCode?: string | null;
   uiTestCaseStatusCode?: string | null;
+  finalTestCaseStatusCode?: string | null;
   sortNumber?: number;
 
   // Store original data fields as well

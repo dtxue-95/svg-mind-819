@@ -36,7 +36,11 @@ export const mockInitialData: RawNode = {
                             "testCaseExpect":"1. 用例列表中显示导入的接口数据",
                             "testCasePriority":"0",
                             "testCasePriority_name":"P0",
-                            "testCaseTagList":[]
+                            "testCaseTagList":[],
+                            "finalStatusName": "待执行",
+                            "finalStatus": "pending_execution",
+                            "executionStatus": "not_run",
+                            "executionStatusName": "未运行"
                         },
                         "childNodeList": [{
                             "name":"用户已经登录系统，服务可用",
@@ -95,7 +99,11 @@ export const mockInitialData: RawNode = {
                             "testCaseExpect":"1. 用例列表中显示导入的接口数据",
                             "testCasePriority":"1",
                             "testCasePriority_name":"P1",
-                            "testCaseTagList":[]
+                            "testCaseTagList":[],
+                            "finalStatusName": "通过",
+                            "finalStatus": "passed",
+                             "executionStatus": "not_run",
+                            "executionStatusName": "未运行"
                         },
                         "apiTestCaseDTO":{
                             "testCaseName":"按根节点筛选接口",
@@ -106,7 +114,9 @@ export const mockInitialData: RawNode = {
                             "testCaseExpect":"1. 用例列表中显示导入的接口数据",
                             "testCasePriority":"1",
                             "testCasePriority_name":"P1",
-                            "testCaseTagList":[]
+                            "testCaseTagList":[],
+                            "executionStatus": "running",
+                            "executionStatusName": "执行中"
                         },
                         "uiTestCaseDTO":{
                             "testCaseName":"按根节点筛选接口",
@@ -117,7 +127,9 @@ export const mockInitialData: RawNode = {
                             "testCaseExpect":"1. 用例列表中显示导入的接口数据",
                             "testCasePriority":"1",
                             "testCasePriority_name":"P1",
-                            "testCaseTagList":[]
+                            "testCaseTagList":[],
+                            "executionStatus": "run_failed",
+                            "executionStatusName": "执行失败"
                         },
                         "childNodeList": [{
                             "name":"系统已经导入多个类目层级的接口数据",

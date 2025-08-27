@@ -75,15 +75,17 @@ export const createInitialMindMap = (rawData: RawNode): MindMapData => {
             const tags: ('function' | 'api' | 'ui')[] = [];
             if (rawNode.functionTestCaseDTO) {
                 tags.push('function');
-                nodeData.functionTestCaseStatusCode = (rawNode.functionTestCaseDTO as any)?.ComprehensivePassStatusCode;
+                nodeData.functionTestCaseStatusCode = (rawNode.functionTestCaseDTO as any)?.executionStatus;
+                nodeData.finalTestCaseStatusCode = (rawNode.functionTestCaseDTO as any)?.finalStatus;
+
             }
             if (rawNode.apiTestCaseDTO) {
                 tags.push('api');
-                nodeData.apiTestCaseStatusCode = (rawNode.apiTestCaseDTO as any)?.ComprehensivePassStatusCode;
+                nodeData.apiTestCaseStatusCode = (rawNode.apiTestCaseDTO as any)?.executionStatus;
             }
             if (rawNode.uiTestCaseDTO) {
                 tags.push('ui');
-                nodeData.uiTestCaseStatusCode = (rawNode.uiTestCaseDTO as any)?.ComprehensivePassStatusCode;
+                nodeData.uiTestCaseStatusCode = (rawNode.uiTestCaseDTO as any)?.executionStatus;
             }
             
             if (tags.length > 0) {

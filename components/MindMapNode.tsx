@@ -29,10 +29,18 @@ interface MindMapNodeProps {
 }
 
 const STATUS_COLOR_PROPS: Record<string, { color: string; backgroundColor: string; }> = {
-    pending: { color: '#007aff', backgroundColor: '#e6f0ff' }, // blue
-    pass: { color: '#34c759', backgroundColor: '#eafaf1' }, // green
-    not_pass: { color: '#ff3b30', backgroundColor: '#fff0ef' }, // red
-    blocked: { color: '#ff9500', backgroundColor: '#fff7e6' }, // orange
+    // 综合通过状态、功能用例执行状态
+    pending_execution: { color: '#007aff', backgroundColor: '#e6f0ff' }, // blue 待执行
+    passed: { color: '#34c759', backgroundColor: '#eafaf1' }, // green 通过
+    not_passed: { color: '#ff3b30', backgroundColor: '#fff0ef' }, // red 未通过
+    blocked: { color: '#ff9500', backgroundColor: '#fff7e6' }, // orange 阻塞
+    // 接口用例、UI用例执行状态
+    not_run: { color: '#8e8e93', backgroundColor: '#f4f4f7' }, // 未运行
+    running: { color: '#007aff', backgroundColor: '#e6f0ff' }, // 执行中
+    run_successful: { color: '#34c759', backgroundColor: '#eafaf1' }, // 运行成功
+    run_exception: { color: '#ff9500', backgroundColor: '#fff7e6' }, // 执行异常
+    run_interrupt: { color: '#ff3b30', backgroundColor: '#fff0ef' }, // 执行中断
+    run_failed: { color: '#ff3b30', backgroundColor: '#fff0ef' }, // 执行失败
     default: { color: '#8e8e93', backgroundColor: '#f4f4f7' }, // default gray
 };
 
@@ -273,7 +281,7 @@ const MindMapNodeComponent: React.FC<MindMapNodeProps> = ({
     if (customBackgroundColor) {
         contentStyle.backgroundColor = customBackgroundColor;
     }
-
+    const case_props = STATUS_COLOR_PROPS[node.finalTestCaseStatusCode || 'default'] || STATUS_COLOR_PROPS.default;
     return (
         <div
             className={nodeClasses}
@@ -294,7 +302,7 @@ const MindMapNodeComponent: React.FC<MindMapNodeProps> = ({
                 </div>
             )}
             <div className="mind-map-node__content" ref={contentRef} style={contentStyle}>
-                {showNodeType && node.nodeType !== 'GENERAL' && (
+                {showNodeType && node.nodeType !== 'GENERAL' && node.nodeType !== 'USE_CASE' && (
                     <span 
                         className="node-type-tag" 
                         style={{ 
@@ -306,6 +314,19 @@ const MindMapNodeComponent: React.FC<MindMapNodeProps> = ({
                         {typeProps.label}
                     </span>
                 )}
+                {showNodeType && node.nodeType === 'USE_CASE' && (
+                    <span
+                        key={'function'} 
+                        className={`case-type-tag case-type-tag--function`}
+                        style={{
+                            color: case_props.color,
+                            backgroundColor: case_props.backgroundColor,
+                        }}
+                    >
+                        {typeProps.label}
+                    </span>
+                )}
+
 
                 {showPriority && priorityProps && node.priorityLevel && (
                     <span
