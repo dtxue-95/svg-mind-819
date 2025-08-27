@@ -187,7 +187,7 @@ root.render(<ComprehensiveExample />);
 
 | Prop 名称                  | 类型                                       | 描述                                                                                                                                                             | 默认值                                                   |
 | -------------------------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| `initialData`              | `RawNode`                                  | 用于初始化思维导图的层级化数据结构。在组件挂载后，此 Prop 的变更**不会**自动更新导图，请使用 `ref.current.setData()` 方法。                                         | 内置的示例数据                                           |
+| `initialData`              | `RawNode`                                  | 用于初始化思维导图的层级化数据结构。**注意：** 这是一个受控属性。在组件挂载后，若此 prop 的引用发生变化（例如，父组件状态更新），将导致思维导图**完全重新加载**，当前的所有状态（包括编辑内容和历史记录）都将被**清空**。如需以命令式方式加载新数据，请使用 `ref.current.setData()` 方法。 | 内置的示例数据                                           |
 | `children`                 | `React.ReactNode`                          | 在画布上渲染自定义子组件，通常与 `<Panel>` 组件结合使用。                                                                                                        | `undefined`                                              |
 | `onDataChange`             | `(info: DataChangeInfo) => void`           | **核心回调**。当导图数据发生任何变更时触发。                                                                                                                     | `(info) => console.log(...)`                             |
 | `onSave`                   | `(info: DataChangeInfo) => void`           | 当用户点击工具栏中的“保存”按钮时触发的回调函数。**这是实现保存逻辑的主要入口。**                                                                                   | `(info) => console.log(...)`                             |
@@ -208,6 +208,8 @@ root.render(<ComprehensiveExample />);
 | `canvasBackgroundColor`    | `string`                                   | 自定义画布的背景颜色。                                                                                                                                           | `'#f7f7f7'`                                              |
 | `showBackgroundDots`       | `boolean`                                  | 是否在画布背景上显示网格点。                                                                                                                                     | `true`                                                   |
 | `showTopToolbar`, `showBottomToolbar` | `boolean`                       | 是否显示顶部/底部工具栏。                                                                                                                                        | `true`                                                   |
+| `showReadOnlyToggleButtons` | `boolean`                                 | 是否在右上角显示“只读模式/编辑模式”的切换按钮。                                                                                                                  | `true`                                                   |
+| `showShortcutsButton`      | `boolean`                                  | 是否在右上角显示“快捷键”按钮。                                                                                                                                   | `true`                                                   |
 | `topToolbarCommands`       | `CommandId[]`                              | 自定义顶部工具栏中显示的按钮及其顺序。                                                                                                                           | `[...]` (默认命令)                                       |
 | `bottomToolbarCommands`    | `CommandId[]`                              | 自定义底部工具栏中显示的按钮及其顺序。                                                                                                                           | `[...]` (默认命令)                                       |
 | `showContextMenu`, `showCanvasContextMenu` | `boolean`                    | 是否显示节点/画布的右键上下文菜单。                                                                                                                              | `true`                                                   |
@@ -295,10 +297,59 @@ export interface AppRef {
 
 - **用途**: 实现自动保存、与外部状态（如 Redux）同步、驱动外部 UI（如显示选中节点的详细信息面板）、记录用户操作日志等。
 - **与 `onSave` 的区别**: `onSave` 仅在用户**点击保存按钮**时触发，是用户意图明确的保存操作。而 `onDataChange` 在**每次变更**时都会触发，频率更高。
-- **`DataChangeInfo` 对象**: 每次回调都会收到一个 `DataChangeInfo` 对象，其中最重要的字段是：
-    - `operationType: OperationType`: **最关键的字段**。它告知你发生了什么操作（例如 `ADD_NODE`, `UPDATE_NODE_TEXT`, `SELECT_NODE`）。
-    - `currentRawData: RawNode`: 变更**之后**整个思维导图的完整、**层级化**数据。这是保存或同步状态的理想格式。
-    - `currentNode?: RawNode`: 操作中涉及的主要节点。
+- **`DataChangeInfo` 对象**: 每次回调都会收到一个 `DataChangeInfo` 对象，它包含了关于变更的丰富上下文信息，是与外部应用集成的关键。
+
+### 深入 `DataChangeInfo` 回调对象
+
+`onDataChange`, `onSave` 和 `onExecuteUseCase` 回调函数都会接收一个 `DataChangeInfo` 对象。
+
+```typescript
+interface DataChangeInfo {
+  // 核心元数据
+  operationType: OperationType;
+  timestamp: number;
+  description: string;
+  
+  // --- 数据快照 ---
+  // 变更后的完整层级数据 (推荐用于保存)
+  currentRawData: RawNode; 
+  // 变更前的完整层级数据
+  previousRawData: RawNode;
+  // 变更后的完整扁平化数据 (回调专用格式)
+  currentData: RawCallbackMindMapData; 
+  // 变更前的完整扁平化数据 (回调专用格式)
+  previousData: RawCallbackMindMapData;
+  
+  // --- 变更详情 ---
+  // 受影响节点的 UUID 列表
+  affectedNodeUuids?: string[];
+  // 新增节点的子树 (层级结构)
+  addedNodes?: RawNode[];
+  // 删除节点的子树 (层级结构)
+  deletedNodes?: RawNode[];
+  // 更新节点的子树 (层级结构)
+  updatedNodes?: RawNode[];
+  
+  // --- 上下文节点 ---
+  // 当前操作的主要节点 (层级结构, 包含其所有后代)
+  currentNode?: RawNode; 
+  // 当前操作节点的父节点 (仅父节点本身, 不含后代)
+  parentNode?: RawNode;
+  
+  // --- 节点链 (从根节点到当前节点的路径) ---
+  uuidChain?: string[];
+  uuidChainNodes?: RawNode[]; // 路径上的节点数组 (不含后代)
+}
+```
+
+**关键字段解析:**
+
+-   **`operationType`**: **最关键的字段**。它告知你发生了什么操作（例如 `ADD_NODE`, `UPDATE_NODE_TEXT`, `SELECT_NODE`）。
+-   **`currentRawData`**: 变更**之后**整个思维导图的完整、**层级化**数据。**这是用于保存或与外部状态同步的最理想的数据格式。**
+-   **`previousRawData`**: 变更**之前**的层级化数据快照，用于对比。
+-   `addedNodes`, `deletedNodes`, `updatedNodes`: 提供了变更节点的**完整子树**，而不仅仅是节点本身。例如，当删除一个模块时，`deletedNodes` 将包含该模块及其下所有测试点、用例等的层级结构。
+-   `currentNode`: 操作中涉及的主要节点。例如，在 `UPDATE_NODE_TEXT` 操作中，`currentNode` 就是被编辑的那个节点（及其子树）。
+-   `uuidChainNodes`: 一个从根节点到 `currentNode` 的路径节点数组，让你轻松了解节点的层级上下文。
 
 ---
 
@@ -330,7 +381,7 @@ interface RawNode {
     nodeType?: 'rootNode' | 'moduleNode' | 'testPointNode' | 'caseNode' | 'preconditionNode' | 'stepNode' | 'resultNode' | string;
     priorityLevel?: "0" | "1" | "2" | "3";
     childNodeList?: RawNode[];
-    // ... 其他字段
+    // ... 其他自定义字段也会被保留
 }
 ```
 
@@ -343,6 +394,8 @@ interface RawNode {
 | `ADD_NODE`                | 添加了一个新节点         |
 | `DELETE_NODE`             | 删除了一个或多个节点     |
 | `UPDATE_NODE_TEXT`        | 更新了节点的文本和尺寸   |
+| `UPDATE_NODE_TYPE`        | 更新了节点的类型         |
+| `UPDATE_NODE_PRIORITY`    | 更新了节点的优先级       |
 | `MOVE_NODE`               | 移动了节点位置           |
 | `REORDER_NODE`            | 对同级节点进行了排序     |
 | `TOGGLE_NODE_COLLAPSE`    | 展开或折叠了节点         |
