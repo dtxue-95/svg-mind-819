@@ -1,9 +1,10 @@
 
 
+
 import React, { useImperativeHandle, forwardRef, useCallback, useState, useEffect, useMemo } from 'react';
 import { useMindMap } from './hooks/useMindMap';
 import { MindMapCanvas } from './components/MindMapCanvas';
-import type { RawNode, CommandId, NodeType, DataChangeCallback, DataChangeInfo, MindMapNodeData } from './types';
+import type { RawNode, CommandId, NodeType, DataChangeCallback, DataChangeInfo, MindMapNodeData, CanvasTransform } from './types';
 import { OperationType } from './types';
 import { createInitialMindMap } from './utils/createInitialMindMap';
 import { convertDataChangeInfo } from './utils/callbackDataConverter';
@@ -59,6 +60,8 @@ interface AppProps {
     showReadOnlyToggleButtons?: boolean;
     showShortcutsButton?: boolean;
     children?: React.ReactNode;
+    preserveStateOnDataUpdate?: boolean;
+    stableNodeId?: string;
 }
 
 const App = forwardRef<AppRef, AppProps>(({
@@ -91,11 +94,14 @@ const App = forwardRef<AppRef, AppProps>(({
     showReadOnlyToggleButtons = true,
     showShortcutsButton = true,
     children,
+    preserveStateOnDataUpdate = true,
+    stableNodeId = 'id',
 }, ref) => {
     // State to hold the data for the mind map. Initialized from props.
     const [currentData, setCurrentData] = useState<RawNode>(initialData);
     const [isReadOnly, setIsReadOnly] = useState(true);
     const [newlyAddedNodeUuid, setNewlyAddedNodeUuid] = useState<string | null>(null);
+    const [viewTransform, setViewTransform] = useState<CanvasTransform | null>(null);
 
     // Effect to update the internal state when the initialData prop changes.
     // This allows the mind map to update when data is loaded asynchronously.
@@ -135,7 +141,13 @@ const App = forwardRef<AppRef, AppProps>(({
         canRedo,
         isDirty,
         resetHistory,
-    } = useMindMap(initialMindMap, strictMode, onDataChange);
+    } = useMindMap(
+        initialMindMap, 
+        strictMode, 
+        onDataChange, 
+        stableNodeId, 
+        preserveStateOnDataUpdate
+    );
 
     const handleAddChildNode = useCallback((parentUuid: string) => {
         const newUuid = addChildNode(parentUuid);
@@ -209,7 +221,7 @@ const App = forwardRef<AppRef, AppProps>(({
         setData: (newData: RawNode) => {
             setCurrentData(newData);
             // After setting completely new data, we treat it as a new baseline.
-            resetHistory();
+            // resetHistory is now handled automatically by the merge effect in useMindMap.
             setIsReadOnly(true);
         },
         resetHistory: () => {
@@ -289,6 +301,8 @@ const App = forwardRef<AppRef, AppProps>(({
                 onNodeFocused={() => setNewlyAddedNodeUuid(null)}
                 showReadOnlyToggleButtons={showReadOnlyToggleButtons}
                 showShortcutsButton={showShortcutsButton}
+                viewTransform={viewTransform}
+                onViewTransformChange={setViewTransform}
             >
                 {children}
             </MindMapCanvas>

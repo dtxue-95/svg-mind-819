@@ -11,7 +11,7 @@ interface MinimapProps {
     canvasTransform: CanvasTransform;
     canvasRef: React.RefObject<HTMLDivElement>;
     isBottomToolbarVisible: boolean;
-    onSetTransform: (transform: Partial<CanvasTransform>) => void;
+    onSetTransform: (transform: CanvasTransform) => void;
 }
 
 export const Minimap: React.FC<MinimapProps> = ({ nodes, canvasTransform, canvasRef, isBottomToolbarVisible, onSetTransform }) => {
@@ -90,7 +90,7 @@ export const Minimap: React.FC<MinimapProps> = ({ nodes, canvasTransform, canvas
         const newTranslateX = canvasRect.width / 2 - worldX * canvasTransform.scale;
         const newTranslateY = canvasRect.height / 2 - worldY * canvasTransform.scale;
 
-        onSetTransform({ translateX: newTranslateX, translateY: newTranslateY });
+        onSetTransform({ ...canvasTransform, translateX: newTranslateX, translateY: newTranslateY });
     };
 
     const handlePanStart = (e: React.MouseEvent) => {
@@ -131,7 +131,7 @@ export const Minimap: React.FC<MinimapProps> = ({ nodes, canvasTransform, canvas
         const newTranslateX = canvasTransform.translateX + dx_transform;
         const newTranslateY = canvasTransform.translateY + dy_transform;
 
-        onSetTransform({ translateX: newTranslateX, translateY: newTranslateY });
+        onSetTransform({ ...canvasTransform, translateX: newTranslateX, translateY: newTranslateY });
 
     }, [onSetTransform, canvasTransform, minimapViewBox]);
 

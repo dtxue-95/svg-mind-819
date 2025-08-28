@@ -1,12 +1,7 @@
-
-
 import type { CanvasState, DragState } from './canvasState';
 import type { CanvasTransform, MindMapData, MindMapNodeData, NodeType } from '../types';
 
 export type CanvasAction =
-    | { type: 'SET_TRANSFORM'; payload: Partial<CanvasTransform> }
-    | { type: 'ZOOM'; payload: { scaleAmount: number; centerX: number; centerY: number } }
-    | { type: 'PAN'; payload: { dx: number; dy: number } }
     | { type: 'SELECT_NODE'; payload: { nodeUuid: string | null } }
     | { type: 'SET_PANNING'; payload: { isPanning: boolean } }
     | { type: 'SET_TOOLBAR_VISIBILITY'; payload: { isVisible: boolean } }
@@ -22,56 +17,13 @@ export type CanvasAction =
     | { type: 'HIDE_CANVAS_CONTEXT_MENU' }
     // Drag & Drop Actions
     | { type: 'START_DRAG'; payload: { nodeUuid: string, mindMapData: MindMapData, config: { enableStrictDrag: boolean, enableNodeReorder: boolean, isDraggable: boolean, reorderableNodeTypes?: NodeType[] } } }
-    | { type: 'DRAG_MOVE'; payload: { offset: { dx: number; dy: number }, canvasPosition: { x: number, y: number }, allNodes: Record<string, MindMapNodeData>, visibleNodeUuids: Set<string> } }
+    // FIX: Added `transform` to the payload so the reducer can access canvas scale and translation for accurate calculations.
+    | { type: 'DRAG_MOVE'; payload: { offset: { dx: number; dy: number }, canvasPosition: { x: number, y: number }, allNodes: Record<string, MindMapNodeData>, visibleNodeUuids: Set<string>, transform: CanvasTransform } }
     | { type: 'END_DRAG' };
 
 
 export const canvasReducer = (state: CanvasState, action: CanvasAction): CanvasState => {
     switch (action.type) {
-        case 'SET_TRANSFORM':
-            return {
-                ...state,
-                transform: { ...state.transform, ...action.payload },
-            };
-        case 'ZOOM': {
-            const { scaleAmount, centerX, centerY } = action.payload;
-
-            const prospectiveScale = state.transform.scale * scaleAmount;
-            // Clamp the scale between 10% (0.1) and 400% (4.0)
-            const newScale = Math.max(0.1, Math.min(prospectiveScale, 4.0));
-
-            // If scale is at the limit and we're trying to go further, do nothing.
-            if (newScale === state.transform.scale) {
-                return state;
-            }
-
-            // Calculate the actual scale change to adjust translation correctly
-            const effectiveScaleAmount = newScale / state.transform.scale;
-
-            const newTranslateX = centerX - (centerX - state.transform.translateX) * effectiveScaleAmount;
-            const newTranslateY = centerY - (centerY - state.transform.translateY) * effectiveScaleAmount;
-            
-            return {
-                ...state,
-                transform: {
-                    ...state.transform,
-                    scale: newScale,
-                    translateX: newTranslateX,
-                    translateY: newTranslateY,
-                },
-            };
-        }
-        case 'PAN': {
-            const { dx, dy } = action.payload;
-            return {
-                ...state,
-                transform: {
-                    ...state.transform,
-                    translateX: state.transform.translateX + dx,
-                    translateY: state.transform.translateY + dy,
-                },
-            };
-        }
         case 'SELECT_NODE':
             return { ...state, selectedNodeUuid: action.payload.nodeUuid };
         case 'SET_PANNING':
@@ -183,12 +135,15 @@ export const canvasReducer = (state: CanvasState, action: CanvasAction): CanvasS
 
         case 'DRAG_MOVE': {
             if (!state.dragState) return state;
-            const { offset, canvasPosition, allNodes, visibleNodeUuids } = action.payload;
+            // FIX: Destructure `transform` from the payload.
+            const { offset, canvasPosition, allNodes, visibleNodeUuids, transform } = action.payload;
+            // FIX: Use the destructured `transform` object.
+            const { scale, translateX, translateY } = transform;
 
             const { nodeUuid: draggedNodeUuid, reparentTargets, reorderSiblings } = state.dragState;
             const draggedNode = allNodes[draggedNodeUuid];
             if (!draggedNode?.position || typeof draggedNode.width !== 'number' || typeof draggedNode.height !== 'number') {
-                return state;
+                return { ...state, dragState: { ...state.dragState, offset, dropTarget: null } };
             }
             
             let bestTarget: DragState['dropTarget'] = null;
@@ -203,10 +158,10 @@ export const canvasReducer = (state: CanvasState, action: CanvasAction): CanvasS
                     }
 
                     // Convert target node's bounds to screen coordinates to check against mouse position
-                    const transformedX = (targetNode.position.x * state.transform.scale) + state.transform.translateX;
-                    const transformedY = (targetNode.position.y * state.transform.scale) + state.transform.translateY;
-                    const transformedWidth = targetNode.width * state.transform.scale;
-                    const transformedHeight = targetNode.height * state.transform.scale;
+                    const transformedX = (targetNode.position.x * scale) + translateX;
+                    const transformedY = (targetNode.position.y * scale) + translateY;
+                    const transformedWidth = targetNode.width * scale;
+                    const transformedHeight = targetNode.height * scale;
 
                     // Check if mouse is over the target sibling
                     if (canvasPosition.x >= transformedX && canvasPosition.x <= transformedX + transformedWidth &&

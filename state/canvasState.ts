@@ -31,7 +31,6 @@ export interface DragState {
 }
 
 export interface CanvasState {
-    transform: CanvasTransform;
     selectedNodeUuid: string | null;
     isPanning: boolean;
     isBottomToolbarVisible: boolean;
@@ -49,11 +48,6 @@ export const getInitialCanvasState = (rootUuid: string, options: {
     showTopToolbar?: boolean;
     showBottomToolbar?: boolean;
 } = {}): CanvasState => ({
-    transform: {
-        scale: 1,
-        translateX: 0,
-        translateY: 0,
-    },
     selectedNodeUuid: rootUuid,
     isPanning: false,
     isBottomToolbarVisible: options.showBottomToolbar ?? true,

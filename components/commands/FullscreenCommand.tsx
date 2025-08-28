@@ -1,18 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { FiMaximize, FiMinimize } from 'react-icons/fi';
 
-interface FullscreenCommandProps {
-    canvasElementRef: React.RefObject<HTMLElement>;
-}
+interface FullscreenCommandProps {}
 
-export const FullscreenCommand: React.FC<FullscreenCommandProps> = ({ canvasElementRef }) => {
+export const FullscreenCommand: React.FC<FullscreenCommandProps> = () => {
     const [isFullscreen, setIsFullscreen] = useState(false);
 
     const handleFullscreenChange = useCallback(() => {
-        // State is now based on whether our specific element is the one in fullscreen.
-        const isElementFullscreen = document.fullscreenElement === canvasElementRef.current;
-        setIsFullscreen(isElementFullscreen);
-    }, [canvasElementRef]);
+        setIsFullscreen(!!document.fullscreenElement);
+    }, []);
 
     useEffect(() => {
         document.addEventListener('fullscreenchange', handleFullscreenChange);
@@ -22,10 +18,9 @@ export const FullscreenCommand: React.FC<FullscreenCommandProps> = ({ canvasElem
     }, [handleFullscreenChange]);
 
     const toggleFullscreen = useCallback(async () => {
-        const element = canvasElementRef.current;
+        const element = document.getElementById('root'); // Or a more specific canvas parent
         if (!element) return;
 
-        // If no element is currently in fullscreen mode, request it for our canvas.
         if (!document.fullscreenElement) {
             try {
                 await element.requestFullscreen();
@@ -33,14 +28,13 @@ export const FullscreenCommand: React.FC<FullscreenCommandProps> = ({ canvasElem
                 console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
             }
         } else {
-            // If any element is in fullscreen, exit.
             try {
                 await document.exitFullscreen();
             } catch (err) {
                 console.error(`Error attempting to exit full-screen mode: ${err.message} (${err.name})`);
             }
         }
-    }, [canvasElementRef]);
+    }, []);
 
     return (
         <button 

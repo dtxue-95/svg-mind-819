@@ -4,7 +4,7 @@ import { useNodeActions } from './useNodeActions';
 import { autoLayout } from '../utils/autoLayout';
 import { mindMapReducer, MindMapAction } from '../state/mindMapReducer';
 import { createHistoryReducer, HistoryAction } from './useMindMapState';
-import type { MindMapData, NodeType, NodePriority, DataChangeCallback } from '../types';
+import type { MindMapData, NodeType, NodePriority, DataChangeCallback, MindMapNodeData } from '../types';
 import { OperationType } from '../types';
 import { getNodeChainByUuid } from '../utils/dataChangeUtils';
 import { convertDataChangeInfo } from '../utils/callbackDataConverter';
@@ -16,9 +16,11 @@ const historicMindMapReducer = createHistoryReducer(mindMapReducer, {
 const emptyMindMap: MindMapData = { rootUuid: '', nodes: {} };
 
 export const useMindMap = (
-    initialMindMap: MindMapData, 
+    initialMindMap: MindMapData,
     strictMode: boolean = false,
-    onDataChange?: DataChangeCallback
+    onDataChange?: DataChangeCallback,
+    stableNodeId: string = 'id',
+    preserveStateOnDataUpdate: boolean = true
 ) => {
     const [history, dispatch] = useReducer(historicMindMapReducer, {
         past: [],
@@ -40,6 +42,8 @@ export const useMindMap = (
     const initialLoadFired = useRef(false);
     const initialLayoutDone = useRef(false);
     const isInitialMountRef = useRef(true);
+    const presentStateRef = useRef(history.present);
+    presentStateRef.current = history.present;
 
     // This effect listens for changes in the initialMindMap prop (e.g., from an API call)
     // and resets the mind map state accordingly.
@@ -50,14 +54,60 @@ export const useMindMap = (
             return;
         }
 
-        // When new initial data is provided, reset the entire history.
-        dispatch({ type: 'RESET_HISTORY', payload: initialMindMap });
+        if (!preserveStateOnDataUpdate) {
+            // Original behavior: blow away the state and start fresh.
+            dispatch({ type: 'RESET_HISTORY', payload: initialMindMap });
+            initialLayoutDone.current = false;
+            initialLoadFired.current = false;
+            return;
+        }
+        
+        // --- New Smart Merge Logic ---
+        const oldState = presentStateRef.current;
+        const newStateFromProps = initialMindMap;
 
-        // Reset flags to allow re-triggering of initial layout and load events.
-        initialLayoutDone.current = false;
-        initialLoadFired.current = false;
+        // 1. Create a map of old nodes using the stable ID for quick lookup.
+        const oldNodesMap = new Map<string | number, MindMapNodeData>();
+        Object.values(oldState.nodes).forEach(node => {
+            const stableIdValue = (node as any)[stableNodeId];
+            if (stableIdValue !== undefined && stableIdValue !== null) {
+                oldNodesMap.set(stableIdValue, node);
+            }
+        });
+
+        // 2. Create a new nodes object, preserving state from old nodes where possible.
+        const mergedNodes: Record<string, MindMapNodeData> = {};
+        Object.values(newStateFromProps.nodes).forEach(newNode => {
+            const stableIdValue = (newNode as any)[stableNodeId];
+            const oldNode = stableIdValue !== undefined ? oldNodesMap.get(stableIdValue) : undefined;
+
+            if (oldNode) {
+                // Merge: Take all new data, but preserve old layout/UI state properties.
+                mergedNodes[newNode.uuid!] = {
+                    ...newNode,
+                    position: oldNode.position,
+                    width: oldNode.width,
+                    height: oldNode.height,
+                    isCollapsed: oldNode.isCollapsed,
+                };
+            } else {
+                // This is a completely new node, just add it as is.
+                mergedNodes[newNode.uuid!] = newNode;
+            }
+        });
+        
+        const mergedMindMap: MindMapData = {
+            ...newStateFromProps,
+            nodes: mergedNodes,
+        };
+        
+        // 3. Re-run layout to position any new nodes correctly without disrupting existing ones.
+        const laidOutMap = autoLayout(mergedMindMap);
+
+        // 4. Reset the state history with the newly merged and laid-out data.
+        dispatch({ type: 'RESET_HISTORY', payload: laidOutMap });
     
-    }, [initialMindMap]);
+    }, [initialMindMap, preserveStateOnDataUpdate, stableNodeId]);
 
     const { triggerAutoLayout } = useAutoLayout(mindMap, dispatch, onDataChange);
     
