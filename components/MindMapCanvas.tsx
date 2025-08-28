@@ -1,4 +1,9 @@
 
+
+
+
+
+
 import React, { useCallback, useRef, useEffect, useReducer, useMemo, useState } from 'react';
 import type { MindMapData, CommandId, MindMapNodeData, NodeType, NodePriority, DataChangeCallback, CanvasTransform } from '../types';
 import { MindMapNode } from './MindMapNode';
@@ -120,6 +125,9 @@ interface MindMapCanvasProps {
     onNodeFocused: () => void;
     showReadOnlyToggleButtons: boolean;
     showShortcutsButton: boolean;
+    viewTransform: CanvasTransform | null;
+    // FIX: Changed type to allow functional updates for state, which is needed for smooth panning.
+    onViewTransformChange: React.Dispatch<React.SetStateAction<CanvasTransform | null>>;
 }
 
 const SvgPath = React.memo(({ d, className }: { d: string, className: string }) => {
@@ -137,7 +145,8 @@ const AUTO_PAN_SPEED = 10;
 
 export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
     mindMapData, onAddChildNode, onAddSiblingNode, onDeleteNode, onFinishEditing, onUpdateNodePosition, onReparentNode, onReorderNode, onLayout, onUpdateNodeSize, onSave, showAITag, isDraggable = false, enableStrictDrag = false, enableNodeReorder = true, reorderableNodeTypes, showNodeType, showPriority, onToggleCollapse, onExpandNodes, onExpandAllNodes, onCollapseAllNodes, onExpandToLevel, onCollapseToLevel, onUpdateNodeType, onUpdateNodePriority,
-    onUndo, onRedo, canUndo, canRedo, showTopToolbar, showBottomToolbar, topToolbarCommands, bottomToolbarCommands, strictMode = false, showContextMenu = true, showCanvasContextMenu = true, priorityEditableNodeTypes, onDataChange, onExecuteUseCase, enableUseCaseExecution, canvasBackgroundColor, showBackgroundDots, showMinimap, getNodeBackgroundColor, enableReadOnlyUseCaseExecution, enableExpandCollapseByLevel, isReadOnly, onToggleReadOnly, onSetReadOnly, isDirty, children, newlyAddedNodeUuid, onNodeFocused, showReadOnlyToggleButtons, showShortcutsButton
+    onUndo, onRedo, canUndo, canRedo, showTopToolbar, showBottomToolbar, topToolbarCommands, bottomToolbarCommands, strictMode = false, showContextMenu = true, showCanvasContextMenu = true, priorityEditableNodeTypes, onDataChange, onExecuteUseCase, enableUseCaseExecution, canvasBackgroundColor, showBackgroundDots, showMinimap, getNodeBackgroundColor, enableReadOnlyUseCaseExecution, enableExpandCollapseByLevel, isReadOnly, onToggleReadOnly, onSetReadOnly, isDirty, children, newlyAddedNodeUuid, onNodeFocused, showReadOnlyToggleButtons, showShortcutsButton,
+    viewTransform, onViewTransformChange
 }) => {
     const [canvasState, dispatch] = useReducer(canvasReducer, {
         rootUuid: mindMapData.rootUuid,
@@ -147,15 +156,18 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
         showTopToolbar: args.showTopToolbar,
         showBottomToolbar: args.showBottomToolbar
     }));
-    const canvasStateRef = useRef(canvasState);
-    canvasStateRef.current = canvasState;
     
-    const { transform, selectedNodeUuid, dragState, isBottomToolbarVisible, isTopToolbarVisible, isSearchActive, searchQuery, searchMatches, currentMatchIndex, contextMenu, canvasContextMenu } = canvasState;
+    const { selectedNodeUuid, dragState, isBottomToolbarVisible, isTopToolbarVisible, isSearchActive, searchQuery, searchMatches, currentMatchIndex, contextMenu, canvasContextMenu } = canvasState;
     
     const canvasRef = useRef<HTMLDivElement>(null);
     const panStartPos = useRef({ x: 0, y: 0 });
     const dragStartPosRef = useRef({ x: 0, y: 0 });
     const shortcutsButtonRef = useRef<HTMLButtonElement>(null);
+    
+    // Create a ref to hold the latest canvas state to solve stale closure issues in event handlers.
+    const canvasStateRef = useRef(canvasState);
+    canvasStateRef.current = canvasState;
+
 
     const [isShortcutsPanelVisible, setIsShortcutsPanelVisible] = useState(false);
     const [shortcutsPanelPosition, setShortcutsPanelPosition] = useState<{top: number; right: number}>({ top: 0, right: 0 });
@@ -210,11 +222,13 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
     }, [isTopToolbarVisible]);
 
     useEffect(() => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        const { width, height } = canvas.getBoundingClientRect();
-        dispatch({ type: 'SET_TRANSFORM', payload: { translateX: width / 8, translateY: height / 2 }});
-    }, []);
+        // Only set the initial transform if the parent hasn't supplied one.
+        // This ensures the view persists across data reloads.
+        if (!viewTransform && canvasRef.current) {
+            const { width, height } = canvasRef.current.getBoundingClientRect();
+            onViewTransformChange({ scale: 1, translateX: width / 8, translateY: height / 2 });
+        }
+    }, [viewTransform, onViewTransformChange]);
 
     const prevSelectedNodeUuidRef = useRef<string | null>(null);
     const prevIsReadOnlyRef = useRef<boolean>(isReadOnly);
@@ -275,24 +289,24 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
 
     // Effect to center view on the current search match
     useEffect(() => {
-        if (isSearchActive && currentMatchIndex !== null && canvasRef.current) {
+        if (isSearchActive && currentMatchIndex !== null && canvasRef.current && viewTransform) {
             const currentNodeUuid = searchMatches[currentMatchIndex];
             if (currentNodeUuid) {
                 const newTransform = viewCommands.centerView(
                     mindMapData.nodes,
                     currentNodeUuid,
                     canvasRef.current.getBoundingClientRect(),
-                    transform.scale
+                    viewTransform.scale
                 );
-                dispatch({ type: 'SET_TRANSFORM', payload: newTransform });
+                onViewTransformChange({ ...viewTransform, ...newTransform });
             }
         }
-    }, [currentMatchIndex, isSearchActive, searchMatches, mindMapData.nodes, transform.scale]);
+    }, [currentMatchIndex, isSearchActive, searchMatches, mindMapData.nodes, viewTransform, onViewTransformChange]);
 
     // Effect for auto-selecting and centering newly added node
     useEffect(() => {
         // Check if there's a node to focus on, if it exists in the current data, and if the canvas is ready.
-        if (newlyAddedNodeUuid && mindMapData.nodes[newlyAddedNodeUuid] && canvasRef.current) {
+        if (newlyAddedNodeUuid && mindMapData.nodes[newlyAddedNodeUuid] && canvasRef.current && viewTransform) {
             
             // Expand ancestors if they are collapsed to make the new node visible
             const ancestors = findAllAncestorUuids(mindMapData, newlyAddedNodeUuid);
@@ -316,16 +330,16 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
                 mindMapData.nodes,
                 newlyAddedNodeUuid,
                 canvasRef.current.getBoundingClientRect(),
-                transform.scale
+                viewTransform.scale
             );
             
             // 3. Apply the new transform. The existing CSS transition on the <g> element will animate this.
-            dispatch({ type: 'SET_TRANSFORM', payload: newTransform });
+            onViewTransformChange({ ...viewTransform, ...newTransform });
 
             // 4. Notify the parent component that focusing is complete to reset the trigger state.
             onNodeFocused();
         }
-    }, [newlyAddedNodeUuid, mindMapData, onNodeFocused, transform.scale, dispatch, onExpandNodes]);
+    }, [newlyAddedNodeUuid, mindMapData, onNodeFocused, viewTransform, dispatch, onExpandNodes, onViewTransformChange]);
 
 
     // Effect to expand ancestors when search results change
@@ -361,33 +375,50 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
             visibleNodes,
             canvasRef.current.getBoundingClientRect()
         );
-        dispatch({ type: 'SET_TRANSFORM', payload: newTransform });
-    }, [dispatch, canvasRef, mindMapData.nodes, visibleNodeUuids]);
+        onViewTransformChange(newTransform as CanvasTransform);
+    }, [onViewTransformChange, canvasRef, mindMapData.nodes, visibleNodeUuids]);
 
     const handleCenterView = useCallback(() => {
-        if (!canvasRef.current) return;
+        if (!canvasRef.current || !viewTransform) return;
         const nodeUuidToCenter = selectedNodeUuid || mindMapData.rootUuid;
         const newTransform = viewCommands.centerView(
             mindMapData.nodes,
             nodeUuidToCenter,
             canvasRef.current.getBoundingClientRect(),
-            transform.scale
+            viewTransform.scale
         );
-        dispatch({ type: 'SET_TRANSFORM', payload: newTransform });
-    }, [dispatch, canvasRef, mindMapData, selectedNodeUuid, transform.scale]);
+        onViewTransformChange({ ...viewTransform, ...newTransform });
+    }, [onViewTransformChange, canvasRef, mindMapData, selectedNodeUuid, viewTransform]);
 
+    const handleZoom = useCallback((scaleAmount: number) => {
+        if (!canvasRef.current || !viewTransform) return;
+        const rect = canvasRef.current.getBoundingClientRect();
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+
+        const prospectiveScale = viewTransform.scale * scaleAmount;
+        const newScale = Math.max(0.1, Math.min(prospectiveScale, 4.0));
+
+        if (newScale === viewTransform.scale) return;
+
+        const effectiveScaleAmount = newScale / viewTransform.scale;
+        const newTranslateX = centerX - (centerX - viewTransform.translateX) * effectiveScaleAmount;
+        const newTranslateY = centerY - (centerY - viewTransform.translateY) * effectiveScaleAmount;
+        
+        onViewTransformChange({ scale: newScale, translateX: newTranslateX, translateY: newTranslateY });
+    }, [onViewTransformChange, canvasRef, viewTransform]);
+    
     const updateDrag = useCallback(() => {
         animationFrameId.current = null;
-        if (!isDraggingRef.current || !lastMouseEvent.current) {
+        if (!isDraggingRef.current || !lastMouseEvent.current || !viewTransform) {
             return;
         }
     
         const moveEvent = lastMouseEvent.current;
-        const { dragState: currentDragState, transform: currentTransform } = canvasStateRef.current;
-        if (!currentDragState || !canvasRef.current) return;
+        if (!canvasRef.current) return;
     
-        const dx = (moveEvent.clientX - dragStartPosRef.current.x) / currentTransform.scale;
-        const dy = (moveEvent.clientY - dragStartPosRef.current.y) / currentTransform.scale;
+        const dx = (moveEvent.clientX - dragStartPosRef.current.x) / viewTransform.scale;
+        const dy = (moveEvent.clientY - dragStartPosRef.current.y) / viewTransform.scale;
     
         const canvasRect = canvasRef.current.getBoundingClientRect();
         const canvasX = moveEvent.clientX - canvasRect.left;
@@ -400,13 +431,17 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
                 canvasPosition: { x: canvasX, y: canvasY },
                 allNodes: mindMapData.nodes,
                 visibleNodeUuids,
+                // FIX: Added transform to payload, which is required by the reducer to calculate drag logic correctly.
+                transform: viewTransform,
             },
         });
-    }, [dispatch, mindMapData.nodes, visibleNodeUuids]);
+    }, [dispatch, mindMapData.nodes, visibleNodeUuids, viewTransform]);
+
 
     // Effect for keyboard shortcuts
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
+            if (!viewTransform) return;
             const target = e.target as HTMLElement;
             if (
                 target.tagName.toLowerCase() === 'input' ||
@@ -457,21 +492,13 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
             
             if (metaOrCtrl && (e.key === '+' || e.key === '=')) {
                 e.preventDefault();
-                if (!canvasRef.current) return;
-                const rect = canvasRef.current.getBoundingClientRect();
-                const centerX = rect.width / 2;
-                const centerY = rect.height / 2;
-                dispatch({ type: 'ZOOM', payload: { scaleAmount: 1.2, centerX, centerY } });
+                handleZoom(1.2);
                 return;
             }
 
             if (metaOrCtrl && e.key === '-') {
                 e.preventDefault();
-                if (!canvasRef.current) return;
-                const rect = canvasRef.current.getBoundingClientRect();
-                const centerX = rect.width / 2;
-                const centerY = rect.height / 2;
-                dispatch({ type: 'ZOOM', payload: { scaleAmount: 1 / 1.2, centerX, centerY } });
+                handleZoom(1 / 1.2);
                 return;
             }
 
@@ -520,7 +547,7 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
                     dragStartPosRef.current.y += panDy;
                 }
                 
-                dispatch({ type: 'PAN', payload: { dx: panDx, dy: panDy } });
+                onViewTransformChange({ ...viewTransform, translateX: viewTransform.translateX + panDx, translateY: viewTransform.translateY + panDy });
 
                 if (isDraggingRef.current) {
                     // After panning, we must immediately recalculate and apply the new
@@ -604,6 +631,9 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
         onToggleCollapse,
         mindMapData.nodes,
         updateDrag,
+        viewTransform, 
+        onViewTransformChange,
+        handleZoom,
     ]);
 
      const handleCloseContextMenu = useCallback(() => {
@@ -657,7 +687,7 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
         e.preventDefault();
         handleCloseContextMenu();
         handleCloseCanvasContextMenu();
-        if (!canvasRef.current) return;
+        if (!canvasRef.current || !viewTransform) return;
 
         if (dragState) {
             const panDx = -e.deltaX;
@@ -666,7 +696,7 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
             dragStartPosRef.current.x += panDx;
             dragStartPosRef.current.y += panDy;
 
-            dispatch({ type: 'PAN', payload: { dx: panDx, dy: panDy }});
+            onViewTransformChange({ ...viewTransform, translateX: viewTransform.translateX + panDx, translateY: viewTransform.translateY + panDy });
         } else {
             const sensitivity = 0.0025;
             const scaleAmount = Math.pow(2, -e.deltaY * sensitivity);
@@ -674,12 +704,20 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
             const rect = canvasRef.current.getBoundingClientRect();
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
-
-            dispatch({ type: 'ZOOM', payload: { scaleAmount, centerX: mouseX, centerY: mouseY } });
+            
+            const prospectiveScale = viewTransform.scale * scaleAmount;
+            const newScale = Math.max(0.1, Math.min(prospectiveScale, 4.0));
+            if (newScale === viewTransform.scale) return;
+            const effectiveScaleAmount = newScale / viewTransform.scale;
+            const newTranslateX = mouseX - (mouseX - viewTransform.translateX) * effectiveScaleAmount;
+            const newTranslateY = mouseY - (mouseY - viewTransform.translateY) * effectiveScaleAmount;
+            
+            onViewTransformChange({ scale: newScale, translateX: newTranslateX, translateY: newTranslateY });
         }
     };
 
     const startPanning = useCallback((e: React.MouseEvent) => {
+        if (!viewTransform) return;
         document.body.classList.add('canvas-interaction-no-select');
         dispatch({ type: 'SET_PANNING', payload: { isPanning: true } });
         panStartPos.current = { x: e.clientX, y: e.clientY };
@@ -688,7 +726,17 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
             const dx = moveEvent.clientX - panStartPos.current.x;
             const dy = moveEvent.clientY - panStartPos.current.y;
             panStartPos.current = { x: moveEvent.clientX, y: moveEvent.clientY };
-            dispatch({ type: 'PAN', payload: { dx, dy }});
+            
+            // FIX: Use functional update to ensure smooth panning based on the latest state.
+            // This also required changing the `onViewTransformChange` prop type.
+            onViewTransformChange(currentTransform => {
+                if (!currentTransform) return currentTransform;
+                return {
+                    ...currentTransform,
+                    translateX: currentTransform.translateX + dx,
+                    translateY: currentTransform.translateY + dy,
+                };
+            });
         };
 
         const handleMouseUp = () => {
@@ -700,7 +748,7 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
         
         window.addEventListener('mousemove', handleMouseMove);
         window.addEventListener('mouseup', handleMouseUp);
-    }, [dispatch]);
+    }, [dispatch, onViewTransformChange, viewTransform]);
 
     const handleCanvasContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
         if (e.target !== e.currentTarget) return;
@@ -731,7 +779,7 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
     };
     
     const autoPanLoop = useCallback(() => {
-        if (!isDraggingRef.current || (autoPanDirectionRef.current.x === 0 && autoPanDirectionRef.current.y === 0)) {
+        if (!isDraggingRef.current || (autoPanDirectionRef.current.x === 0 && autoPanDirectionRef.current.y === 0) || !viewTransform) {
             autoPanRequestRef.current = null;
             return;
         }
@@ -742,16 +790,16 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
         dragStartPosRef.current.x += panDx;
         dragStartPosRef.current.y += panDy;
     
-        dispatch({ type: 'PAN', payload: { dx: panDx, dy: panDy } });
+        onViewTransformChange({ ...viewTransform, translateX: viewTransform.translateX + panDx, translateY: viewTransform.translateY + panDy });
     
         updateDrag();
     
         autoPanRequestRef.current = requestAnimationFrame(autoPanLoop);
-    }, [dispatch, updateDrag]);
+    }, [onViewTransformChange, viewTransform, updateDrag]);
 
     
     const handleNodeDragStart = useCallback((nodeUuid: string, e: React.MouseEvent) => {
-        if (isReadOnly) return;
+        if (isReadOnly || !viewTransform) return;
     
         document.body.classList.add('canvas-interaction-no-select');
         dragStartPosRef.current = { x: e.clientX, y: e.clientY };
@@ -824,20 +872,19 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
             autoPanDirectionRef.current = { x: 0, y: 0 };
 
             if (dragHasStarted) {
-                const { dragState, transform } = canvasStateRef.current;
-    
-                if (dragState?.dropTarget) {
-                    const { nodeUuid: targetUuid, type } = dragState.dropTarget;
+                const finalDragState = canvasStateRef.current.dragState;
+                if (finalDragState?.dropTarget) {
+                    const { nodeUuid: targetUuid, type } = finalDragState.dropTarget;
                     if (type === 'reparent') {
-                        onReparentNode(dragState.nodeUuid, targetUuid);
+                        onReparentNode(finalDragState.nodeUuid, targetUuid);
                     } else if (type === 'reorder-before' || type === 'reorder-after') {
-                        onReorderNode(dragState.nodeUuid, targetUuid, type.replace('reorder-', '') as 'before' | 'after');
+                        onReorderNode(finalDragState.nodeUuid, targetUuid, type.replace('reorder-', '') as 'before' | 'after');
                     }
-                } else if (dragState?.isFreeDrag) {
+                } else if (finalDragState?.isFreeDrag) {
                     const startNode = mindMapData.nodes[nodeUuid];
-                    if (startNode?.position) {
-                        const finalDx = (upEvent.clientX - dragStartPosRef.current.x) / transform.scale;
-                        const finalDy = (upEvent.clientY - dragStartPosRef.current.y) / transform.scale;
+                    if (startNode?.position && viewTransform) {
+                        const finalDx = (upEvent.clientX - dragStartPosRef.current.x) / viewTransform.scale;
+                        const finalDy = (upEvent.clientY - dragStartPosRef.current.y) / viewTransform.scale;
                         const newPosition = {
                             x: startNode.position.x + finalDx,
                             y: startNode.position.y + finalDy
@@ -853,7 +900,7 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
         window.addEventListener('mousemove', handleMouseMove);
         window.addEventListener('mouseup', handleMouseUp);
     
-    }, [isReadOnly, isDraggable, enableStrictDrag, enableNodeReorder, reorderableNodeTypes, mindMapData, onUpdateNodePosition, onReparentNode, onReorderNode, updateDrag, dispatch, autoPanLoop]);
+    }, [isReadOnly, isDraggable, enableStrictDrag, enableNodeReorder, reorderableNodeTypes, mindMapData, onUpdateNodePosition, onReparentNode, onReorderNode, updateDrag, dispatch, autoPanLoop, viewTransform]);
 
     const handleSelectNode = useCallback((nodeUuid: string | null) => {
         if (!isSearchActive) {
@@ -895,10 +942,6 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
     const isCollapseAllDisabled = useMemo(() => {
         return !Object.values(mindMapData.nodes).some(n => n.parentUuid && !n.isCollapsed);
     }, [mindMapData.nodes]);
-
-    const handleMinimapTransformChange = useCallback((newTransform: Partial<CanvasTransform>) => {
-        dispatch({ type: 'SET_TRANSFORM', payload: newTransform });
-    }, [dispatch]);
 
 
     return (
@@ -963,7 +1006,7 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
 
             <svg className="mind-map-canvas__svg-layer">
                 <g style={{
-                    transform: `translate(${transform.translateX}px, ${transform.translateY}px) scale(${transform.scale})`,
+                    transform: viewTransform ? `translate(${viewTransform.translateX}px, ${viewTransform.translateY}px) scale(${viewTransform.scale})` : '',
                     transition: (canvasState.isPanning || !!dragState) ? 'none' : 'transform 0.3s ease'
                 }}>
                     {Object.values(mindMapData.nodes)
@@ -1100,13 +1143,13 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
 
             {children}
 
-            {showMinimap && canvasRef.current && (
+            {showMinimap && canvasRef.current && viewTransform && (
                 <Minimap 
                     nodes={mindMapData.nodes}
-                    canvasTransform={transform}
+                    canvasTransform={viewTransform}
                     canvasRef={canvasRef}
                     isBottomToolbarVisible={isBottomToolbarVisible}
-                    onSetTransform={handleMinimapTransformChange}
+                    onSetTransform={onViewTransformChange}
                 />
             )}
             
@@ -1115,13 +1158,14 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
                     <BottomToolbar
                         dispatch={dispatch}
                         canvasState={canvasState}
-                        canvasRef={canvasRef}
-                        mindMapData={mindMapData}
                         onLayout={onLayout}
                         commands={bottomToolbarCommands}
-                        visibleNodeUuids={visibleNodeUuids}
                         isReadOnly={isReadOnly}
                         onToggleReadOnly={onToggleReadOnly}
+                        onZoom={handleZoom}
+                        onFitView={handleFitView}
+                        onCenterView={handleCenterView}
+                        currentTransform={viewTransform}
                     />
                 ) : (
                     <ToolbarHandle position="bottom" onClick={handleShowBottomToolbar} />
